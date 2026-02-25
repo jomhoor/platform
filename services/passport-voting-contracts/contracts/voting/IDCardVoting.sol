@@ -21,6 +21,22 @@ contract IDCardVoting is BaseVoting {
     uint256 public constant IDENTITY_LIMIT = type(uint32).max;
 
     /**
+     * @dev Extended user data for INID circuit (queryIdentity_inid_ca).
+     *      Adds personalNumber (signal[8]) which the INID circuit outputs when
+     *      selector_bits[1] = 1 (bit 16 of selector). The contract must include
+     *      this value in the public signals for the proof to verify.
+     *      
+     *      We use a separate struct from BaseVoting.UserData to avoid breaking
+     *      BioPassportVoting which uses the 3-field struct.
+     */
+    struct INIDUserData {
+        uint256 nullifier;
+        uint256 citizenship;
+        uint256 identityCreationTimestamp;
+        uint256 personalNumber;
+    }
+
+    /**
      * @dev INID circuit uses a fixed 238-entry lookup table for citizenship mask.
      * This mapping converts 2-letter country codes (as uint256, e.g., 0x4952 = "IR") to their bit index.
      * The bit index is the position in the circuit's bitmask (0-237).
@@ -85,9 +101,9 @@ contract IDCardVoting is BaseVoting {
     }
 
     function _beforeVerify(bytes32, uint256, bytes memory userPayload_) internal view override {
-        (uint256 proposalId_, , UserData memory userData_) = abi.decode(
+        (uint256 proposalId_, , INIDUserData memory userData_) = abi.decode(
             userPayload_,
-            (uint256, uint256[], UserData)
+            (uint256, uint256[], INIDUserData)
         );
 
         ProposalRules memory proposalRules_ = getProposalRules(proposalId_);
@@ -99,9 +115,9 @@ contract IDCardVoting is BaseVoting {
     }
 
     function _afterVerify(bytes32, uint256, bytes memory userPayload_) internal override {
-        (uint256 proposalId_, uint256[] memory vote_, UserData memory userData_) = abi.decode(
+        (uint256 proposalId_, uint256[] memory vote_, INIDUserData memory userData_) = abi.decode(
             userPayload_,
-            (uint256, uint256[], UserData)
+            (uint256, uint256[], INIDUserData)
         );
 
         ProposalsState(proposalsState).vote(proposalId_, userData_.nullifier, vote_);
@@ -112,9 +128,9 @@ contract IDCardVoting is BaseVoting {
         uint256 currentDate_,
         bytes memory userPayload_
     ) internal view override returns (uint256) {
-        (uint256 proposalId_, uint256[] memory vote_, UserData memory userData_) = abi.decode(
+        (uint256 proposalId_, uint256[] memory vote_, INIDUserData memory userData_) = abi.decode(
             userPayload_,
-            (uint256, uint256[], UserData)
+            (uint256, uint256[], INIDUserData)
         );
 
         uint256 proposalEventId = ProposalsState(proposalsState).getProposalEventId(proposalId_);
@@ -148,6 +164,9 @@ contract IDCardVoting is BaseVoting {
         );
         builder_.withSex(proposalRules_.sex);
         builder_.withCitizenship(userData_.citizenship);
+        // CRITICAL: personalNumber (signal[8]) must match the INID circuit's output
+        // The circuit outputs pers_number * selector_bits[1], which is non-zero when bit 16 is set
+        builder_.withPersonalNumberHash(userData_.personalNumber);
         builder_.withTimestampLowerboundAndUpperbound(0, identityCreationTimestampUpperBound);
         builder_.withIdentityCounterLowerbound(0, identityCounterUpperBound);
         builder_.withBirthDateLowerboundAndUpperbound(

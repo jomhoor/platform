@@ -42,7 +42,7 @@ services:
   
   registration-relayer:
     build:
-      context: ./registration-relayer
+      context: ./services/registration-relayer
       dockerfile: Dockerfile
     container_name: registration-relayer
     ports:
@@ -50,7 +50,10 @@ services:
     environment:
       - KV_VIPER_FILE=/config.yaml
     volumes:
-      - ./configs/registration-relayer.yaml:/config.yaml:ro
+      - ./configs/registration-relayer-local.yaml:/config.yaml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: ["run", "service"]
     restart: unless-stopped
 
   # ============================================
@@ -61,7 +64,7 @@ services:
   
   proof-verification-relayer:
     build:
-      context: ./proof-verification-relayer
+      context: ./services/proof-verification-relayer
       dockerfile: Dockerfile
     container_name: proof-verification-relayer
     ports:
@@ -73,7 +76,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["sh", "-c", "proof-verification-relayer migrate up && proof-verification-relayer run service"]
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["proof-verification-relayer migrate up && proof-verification-relayer run service"]
     restart: unless-stopped
 
   # ============================================

@@ -7,7 +7,10 @@ node_modules/
 npm-debug.log*
 
 # Hardhat
-cache/
+.cache/
+services/passport-contracts/scripts
+services/passport-voting-contracts/scripts
+scripts/
 artifacts/
 generated-types/
 

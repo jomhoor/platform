@@ -1,0 +1,35 @@
+{
+  "chainId": 31337,
+  "deployedAt": "2026-02-26T03:00:00Z",
+  "localIp": "192.168.0.130",
+  "passportContracts": {
+    "Registration2": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
+    "StateKeeper": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
+    "RegistrationSMT": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+    "CertificatesSMT": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+    "MockEvidenceRegistry": "0x781268D46a654D020922f115D75dd3D56D287812"
+  },
+  "votingContracts": {
+    "ProposalsState": "0x0bF7dE8d71820840063D4B8653Fd3F0618986faF",
+    "BioPassportVoting": "0xC0BF43A4Ca27e0976195E6661b099742f10507e5",
+    "IDCardVoting_proxy": "0x687bB6c57915aa2529EfC7D2a26668855e022fAE",
+    "IDCardVoting_impl": "0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70",
+    "NoirTD1Verifier": "0x59C4e2c6a6dC27c259D6d067a039c831e1ff4947"
+  },
+  "proposals": {
+    "1": {
+      "type": "INID",
+      "selector": 65569,
+      "citizenshipWhitelist": ["IR"],
+      "acceptedOptions": [7],
+      "funded": true
+    }
+  },
+  "services": {
+    "hardhat": "http://192.168.0.130:8545",
+    "nginx_gateway": "http://192.168.0.130:8000",
+    "registration_relayer": "http://localhost:8001",
+    "proof_verification_relayer": "http://localhost:8002",
+    "postgres": "localhost:5432"
+  }
+}

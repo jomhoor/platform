@@ -41,14 +41,14 @@ voting_v2:
   enable: true
   rpc: "http://host.docker.internal:8545"
   private_key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-  proposal_state_address: "0xc981ec845488b8479539e6B22dc808Fb824dB00a"
+  proposal_state_address: "0x0bF7dE8d71820840063D4B8653Fd3F0618986faF"
   block: 0
   gas_limit: 800000
   check_with_subscribe: false
 
 # State replicator configuration
 replicator:
-  address: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+  address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"
   source_smt: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
   root_prefix: "Rarimo root"
 

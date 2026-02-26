@@ -22,7 +22,7 @@ network:
   # Local Hardhat node (host.docker.internal for Docker containers to reach host)
   rpc: "http://host.docker.internal:8545"
   gas_multiplier: 1.23
-  
+
   # Hardhat test account #0 (has 10000 ETH)
   private_key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 

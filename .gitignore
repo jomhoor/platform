@@ -38,3 +38,5 @@ coverage.json
 # Temporary files
 tmp/
 temp/
+deploy/.env.example
+deploy/.env.example

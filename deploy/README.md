@@ -167,3 +167,103 @@ docker restart proof-verification-relayer
 # Run database migrations manually
 docker exec proof-verification-relayer proof-verification-relayer migrate up
 ```
+
+---
+
+## Agora Citizen Network (Deliberation Platform)
+
+Domain: `agora.jomhoor.org`
+
+Agora runs as a separate Docker Compose stack alongside the iranians-vote services.
+See [docs/AGORA_INTEGRATION_PLAN.md](../../docs/AGORA_INTEGRATION_PLAN.md) for full integration details.
+
+### Prerequisites
+
+1. Clone Agora fork on the server:
+   ```bash
+   sudo git clone https://github.com/jomhoor/agora.git /opt/agora
+   ```
+
+2. Fill in Agora env vars in `.env` (see `.env.example` for all `AGORA_*` vars)
+
+3. Add DNS A record for `agora.jomhoor.org` → `173.212.214.147`
+
+### Deploy Agora
+
+```bash
+cd /opt/iranians-vote/repo/platform/deploy
+
+# Start Agora stack
+docker compose -f docker-compose.agora.yaml up -d --build
+```
+
+### Nginx / TLS Setup
+
+Agora is served by the same **civic-nginx** container that handles `api.iranians.vote`
+and `compass.jomhoor.org`.
+
+1. **Connect the Agora network to civic-nginx** — add to civic-compass `docker-compose.production.yml`:
+   ```yaml
+   # Under the nginx service:
+   networks:
+     civic:
+     iranians-vote:
+       external: true
+       name: iranians-vote_default
+     agora:
+       external: true
+       name: deploy_agora
+
+   # At top-level networks:
+   networks:
+     agora:
+       external: true
+       name: deploy_agora
+   ```
+
+2. **Deploy nginx vhost config:**
+   ```bash
+   scp deploy/civic-nginx/agora-jomhoor-org.conf \
+       iranians-vote-vps:/opt/civic-compass/nginx/conf.d/agora-jomhoor-org.conf
+   ```
+
+3. **Obtain SSL certificate:**
+   ```bash
+   ssh iranians-vote-vps 'docker exec civic-certbot certbot certonly \
+       --webroot -w /var/www/certbot -d agora.jomhoor.org --agree-tos'
+   ```
+
+4. **Reload nginx:**
+   ```bash
+   ssh iranians-vote-vps 'docker exec civic-nginx nginx -s reload'
+   ```
+
+### Agora Services
+
+| Container | Purpose | Port |
+|-----------|---------|------|
+| `agora-postgres` | Database | 5432 (internal) |
+| `agora-valkey` | Cache/queue | 6379 (internal) |
+| `agora-api` | Fastify API | 8080 (internal) |
+| `agora-frontend` | Vue SPA (nginx) | 80 (internal) |
+| `agora-python-bridge` | Clustering | 8004 (internal) |
+| `agora-math-updater` | Background worker | — |
+
+### Agora Logs
+
+```bash
+docker logs agora-api
+docker logs agora-frontend
+docker logs agora-python-bridge
+docker logs agora-math-updater
+```
+
+### Network Architecture
+
+```
+Internet → civic-nginx (ports 80/443)
+              ├── compass.jomhoor.org  → civic-web:3000        (civic network)
+              ├── api.iranians.vote    → relayers:8000          (iranians-vote network)
+              └── agora.jomhoor.org    → agora-api:8080         (agora network)
+                                         agora-frontend:80
+```

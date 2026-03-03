@@ -42,7 +42,7 @@ services:
   
   registration-relayer:
     build:
-      context: ./registration-relayer
+      context: ./services/registration-relayer
       dockerfile: Dockerfile
     container_name: registration-relayer
     ports:
@@ -61,7 +61,7 @@ services:
   
   proof-verification-relayer:
     build:
-      context: ./proof-verification-relayer
+      context: ./services/proof-verification-relayer
       dockerfile: Dockerfile
     container_name: proof-verification-relayer
     ports:

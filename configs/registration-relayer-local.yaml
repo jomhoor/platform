@@ -12,7 +12,7 @@ network:
   # Local Hardhat RPC (host.docker.internal for Docker containers)
   rpc: "http://host.docker.internal:8545"
 
-  # Registration contract address (deployed to local Hardhat)
+  # Registration contract address (deployed to local Hardhat - Feb 11, 2026)
   registration: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"
 
   # StateKeeper contract
@@ -27,8 +27,8 @@ network:
 
   # Whitelist of allowed destination contracts
   whitelist:
-    - "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"  # Registration2
-    - "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"  # RegistrationPoseidonSMT
+    - "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"  # Registration2 Proxy
+    - "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"  # RegistrationSMT Proxy
 
 cop:
   disabled: true

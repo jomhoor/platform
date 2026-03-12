@@ -1,9 +1,7 @@
-# Proof Verification Relayer Configuration
-# This service SENDS VOTE TRANSACTIONS and LISTENS TO EVENTS on Rarimo L2
+# Proof Verification Relayer Configuration - LOCAL DEVELOPMENT
+# This service SENDS VOTE TRANSACTIONS and LISTENS TO EVENTS on local Hardhat
 #
-# REQUIRED: 
-# 1. PostgreSQL database for storing state
-# 2. A funded private key on Rarimo L2 Testnet
+# For local Hardhat testing (chain ID: 31337)
 
 log:
   level: debug
@@ -21,43 +19,42 @@ vault:
   disabled: true
 
 network:
-  # Rarimo L2 Testnet RPC
-  rpc: "https://l2.testnet.rarimo.com"
+  # Local Hardhat node (host.docker.internal for Docker containers to reach host)
+  rpc: "http://host.docker.internal:8545"
   gas_multiplier: 1.23
-  
-  # REQUIRED: Your private key (without 0x prefix)
-  # WARNING: Use a dedicated relayer wallet with RMO tokens!
-  private_key: "YOUR_PRIVATE_KEY_HERE_WITHOUT_0x"
 
-# Smart contract addresses (from passport-contracts)
+  # Hardhat test account #0 (has 10000 ETH)
+  private_key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+
+# Smart contract addresses (from local Hardhat deployment)
 contracts:
   voting_registry:
-    address: null  # Set if using voting registry
+    address: null
   lightweight_state:
-    address: "0x29516F57C90459c279CF1981D8BEb3b6C1d5B3dB"
+    address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"
   register2:
-    address: "0x511B5Ad9E911Ad5E87e3acb5862976F1398F9A68"
+    address: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"
     block: 0
 
-# Voting V2 configuration (for NoirIdVoting)
+# Voting V2 configuration (for IDCardVoting/NoirIDVoting on local Hardhat)
 voting_v2:
   enable: true
-  rpc: "https://l2.testnet.rarimo.com"
-  private_key: "YOUR_PRIVATE_KEY_HERE_WITHOUT_0x"
-  proposal_state_address: "0x2Be5eF7434a14d08A2C8D8c886cBEB805ae7B671"
+  rpc: "http://host.docker.internal:8545"
+  private_key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+  proposal_state_address: "0x0bF7dE8d71820840063D4B8653Fd3F0618986faF"
   block: 0
   gas_limit: 800000
   check_with_subscribe: false
 
 # State replicator configuration
 replicator:
-  address: "0x10f370A6d8782E0e0E85ba948be6DA2465Aab4E2"
-  source_smt: "0xBdFA8630701e989E0436dAed6a8bFBa442D4FCC1"
+  address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"
+  source_smt: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
   root_prefix: "Rarimo root"
 
 # IPFS for proposal metadata
 ipfs:
-  url: "https://ipfs.rarimo.com/ipfs"
+  url: "https://ipfs.io/ipfs"
   max_retries: 3
   min_abnormal_period: 2s
   max_abnormal_period: 8s

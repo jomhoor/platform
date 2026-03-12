@@ -1,0 +1,141 @@
+version: '3.8'
+
+# Docker Compose for Agora Citizen Network
+# Deployed alongside Iranians.Vote on the same server
+#
+# Prerequisites:
+#   1. Clone agora: git clone https://github.com/zkorum/agora /opt/agora
+#   2. Copy .env.example → .env and fill in values
+#   3. Ensure iranians-vote_default network exists (from iranians-vote stack)
+#
+# Usage:
+#   docker compose -f docker-compose.agora.yaml up -d
+#
+# The agora network is joined by civic-nginx which terminates TLS and
+# proxies HTTPS traffic. See civic-nginx/agora-jomhoor-org.conf.
+
+services:
+  # ============================================
+  # PostgreSQL (Agora's own DB, separate from iranians-vote)
+  # ============================================
+
+  agora-postgres:
+    image: postgres:16
+    container_name: agora-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${AGORA_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${AGORA_POSTGRES_PASSWORD}
+      POSTGRES_DB: agora
+      PGDATA: /data/postgres
+    volumes:
+      - agora_postgres_data:/data/postgres
+      - /opt/agora/services/api/database/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      - agora
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agora"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Valkey (Redis-compatible cache/queue)
+  # ============================================
+
+  agora-valkey:
+    image: valkey/valkey:latest
+    container_name: agora-valkey
+    restart: unless-stopped
+    volumes:
+      - agora_valkey_data:/data
+    command: valkey-server --appendonly yes
+    networks:
+      - agora
+
+  # ============================================
+  # Agora API (Fastify backend)
+  # ============================================
+
+  agora-api:
+    build:
+      context: /opt/agora/services/api
+      dockerfile: Dockerfile
+    container_name: agora-api
+    restart: unless-stopped
+    environment:
+      - CONNECTION_STRING=postgres://${AGORA_POSTGRES_USER:-postgres}:${AGORA_POSTGRES_PASSWORD}@agora-postgres:5432/agora
+      - CORS_ORIGIN_LIST=${AGORA_CORS_ORIGINS:-https://agora.jomhoor.org}
+      - PEPPERS=${AGORA_PEPPERS}
+      - VERIFICATOR_SVC_BASE_URL=${AGORA_VERIFICATOR_SVC_URL:-https://verificator.rarimo.com}
+      - POLIS_BASE_URL=http://agora-python-bridge:8004
+      - QUEUE_VALKEY_URL=valkey://agora-valkey:6379
+      - PORT=8080
+      - SERVER_DID_DEV=${AGORA_SERVER_DID:-did:web:agora.jomhoor.org}
+      - NODE_ENV=production
+    depends_on:
+      agora-postgres:
+        condition: service_healthy
+      agora-valkey:
+        condition: service_started
+    networks:
+      - agora
+    # Run migrations then start server
+    command: >
+      sh -c "node --loader esm-module-alias/loader --no-warnings dist/migrate.js
+      && node --loader esm-module-alias/loader --loader ./esm-loader-lodash-fix.mjs --no-warnings dist/index.js"
+
+  # ============================================
+  # Agora Frontend (Vue/Quasar SPA served by nginx)
+  # ============================================
+
+  agora-frontend:
+    build:
+      context: /opt/agora/services/agora
+      dockerfile: Dockerfile.production
+    container_name: agora-frontend
+    restart: unless-stopped
+    networks:
+      - agora
+
+  # ============================================
+  # Python Bridge (Polis-style clustering)
+  # Optional: can be added later if clustering is needed
+  # ============================================
+
+  agora-python-bridge:
+    build:
+      context: /opt/agora/services/python-bridge
+      dockerfile: Dockerfile
+    container_name: agora-python-bridge
+    restart: unless-stopped
+    networks:
+      - agora
+
+  # ============================================
+  # Math Updater (pg-boss background worker)
+  # Optional: runs clustering + AI label updates
+  # ============================================
+
+  agora-math-updater:
+    build:
+      context: /opt/agora/services/math-updater
+      dockerfile: Dockerfile
+    container_name: agora-math-updater
+    restart: unless-stopped
+    environment:
+      - CONNECTION_STRING=postgres://${AGORA_POSTGRES_USER:-postgres}:${AGORA_POSTGRES_PASSWORD}@agora-postgres:5432/agora
+      - POLIS_BASE_URL=http://agora-python-bridge:8004
+    depends_on:
+      agora-postgres:
+        condition: service_healthy
+    networks:
+      - agora
+
+volumes:
+  agora_postgres_data:
+  agora_valkey_data:
+
+networks:
+  agora:
+    driver: bridge

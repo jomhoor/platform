@@ -38,41 +38,73 @@ nano .env  # Set RELAYER_PRIVATE_KEY
 ./deploy.sh update    # Pull + restart
 ```
 
-## Nginx Setup (First Time Only)
+## Nginx / TLS Setup
+
+api.iranians.vote is served by **civic-nginx** — the nginx container from the
+Civic Compass stack (`/opt/civic-compass`). This same container also serves
+`compass.jomhoor.org`. There is **no host-level nginx** on the server.
+
+### How It Works
+
+```
+Internet → civic-nginx (ports 80/443)
+              ├── compass.jomhoor.org → civic-web:3000
+              └── api.iranians.vote   → registration-relayer:8000
+                                        proof-verification-relayer:8000
+```
+
+civic-nginx reaches the relayers because it is connected to two Docker networks:
+- `civic-compass_civic` (its own stack)
+- `iranians-vote_default` (this stack, declared as external)
+
+### Setup (Already Done)
+
+These steps are documented for reference — they are already applied on the server.
+
+1. **Connect networks** — declared in civic-compass `docker-compose.production.yml`:
+   ```yaml
+   # In civic-compass docker-compose, under nginx service:
+   networks:
+     civic:
+     iranians-vote:
+       external: true
+       name: iranians-vote_default
+
+   # And at top-level:
+   networks:
+     civic:
+       driver: bridge
+     iranians-vote:
+       external: true
+       name: iranians-vote_default
+   ```
+
+2. **Nginx vhost** — the config file is version-controlled at
+   `deploy/civic-nginx/api-iranians-vote.conf` and deployed to
+   `/opt/civic-compass/nginx/conf.d/api-iranians-vote.conf` on the server.
+
+3. **SSL certificates** — managed by certbot (webroot authenticator) running
+   inside the civic-compass stack. Certs live in the certbot volume at
+   `/etc/letsencrypt/live/api.iranians.vote/`. Auto-renewal is configured.
+
+### Updating the Nginx Config
 
 ```bash
-# Copy nginx config
-sudo tee /etc/nginx/sites-available/api.iranians.vote << 'EOF'
-server {
-    listen 80;
-    server_name api.iranians.vote;
+# Copy updated config to server
+scp deploy/civic-nginx/api-iranians-vote.conf \
+    iranians-vote-vps:/opt/civic-compass/nginx/conf.d/api-iranians-vote.conf
 
-    location /health {
-        return 200 'OK';
-        add_header Content-Type text/plain;
-    }
+# Reload nginx (no downtime)
+ssh iranians-vote-vps 'docker exec civic-nginx nginx -s reload'
+```
 
-    location /integrations/registration-relayer/ {
-        proxy_pass http://127.0.0.1:8001/integrations/registration-relayer/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
+### SSL Certificate Renewal
 
-    location /integrations/proof-verification-relayer/ {
-        proxy_pass http://127.0.0.1:8002/integrations/proof-verification-relayer/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-EOF
+Certbot runs on a loop inside the civic-compass stack and renews automatically.
+To test manually:
 
-sudo ln -sf /etc/nginx/sites-available/api.iranians.vote /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-
-# Get SSL certificate
-sudo certbot --nginx -d api.iranians.vote
+```bash
+ssh iranians-vote-vps 'docker exec civic-certbot certbot renew --dry-run'
 ```
 
 ## Environment Variables
@@ -134,4 +166,104 @@ docker restart proof-verification-relayer
 
 # Run database migrations manually
 docker exec proof-verification-relayer proof-verification-relayer migrate up
+```
+
+---
+
+## Agora Citizen Network (Deliberation Platform)
+
+Domain: `agora.jomhoor.org`
+
+Agora runs as a separate Docker Compose stack alongside the iranians-vote services.
+See [docs/AGORA_INTEGRATION_PLAN.md](../../docs/AGORA_INTEGRATION_PLAN.md) for full integration details.
+
+### Prerequisites
+
+1. Clone Agora fork on the server:
+   ```bash
+   sudo git clone https://github.com/jomhoor/agora.git /opt/agora
+   ```
+
+2. Fill in Agora env vars in `.env` (see `.env.example` for all `AGORA_*` vars)
+
+3. Add DNS A record for `agora.jomhoor.org` → `173.212.214.147`
+
+### Deploy Agora
+
+```bash
+cd /opt/iranians-vote/repo/platform/deploy
+
+# Start Agora stack
+docker compose -f docker-compose.agora.yaml up -d --build
+```
+
+### Nginx / TLS Setup
+
+Agora is served by the same **civic-nginx** container that handles `api.iranians.vote`
+and `compass.jomhoor.org`.
+
+1. **Connect the Agora network to civic-nginx** — add to civic-compass `docker-compose.production.yml`:
+   ```yaml
+   # Under the nginx service:
+   networks:
+     civic:
+     iranians-vote:
+       external: true
+       name: iranians-vote_default
+     agora:
+       external: true
+       name: deploy_agora
+
+   # At top-level networks:
+   networks:
+     agora:
+       external: true
+       name: deploy_agora
+   ```
+
+2. **Deploy nginx vhost config:**
+   ```bash
+   scp deploy/civic-nginx/agora-jomhoor-org.conf \
+       iranians-vote-vps:/opt/civic-compass/nginx/conf.d/agora-jomhoor-org.conf
+   ```
+
+3. **Obtain SSL certificate:**
+   ```bash
+   ssh iranians-vote-vps 'docker exec civic-certbot certbot certonly \
+       --webroot -w /var/www/certbot -d agora.jomhoor.org --agree-tos'
+   ```
+
+4. **Reload nginx:**
+   ```bash
+   ssh iranians-vote-vps 'docker exec civic-nginx nginx -s reload'
+   ```
+
+### Agora Services
+
+| Container | Purpose | Port |
+|-----------|---------|------|
+| `agora-postgres` | Database | 5432 (internal) |
+| `agora-valkey` | Cache/queue | 6379 (internal) |
+| `agora-api` | Fastify API | 8080 (internal) |
+| `agora-frontend` | Vue SPA (nginx) | 80 (internal) |
+| `agora-python-bridge` | Clustering | 8004 (internal) |
+| `agora-math-updater` | Background worker | — |
+
+### Agora Logs
+
+```bash
+docker logs agora-api
+docker logs agora-frontend
+docker logs agora-python-bridge
+docker logs agora-math-updater
+```
+
+### Network Architecture
+
+```
+Internet → civic-nginx (ports 80/443)
+              ├── compass.jomhoor.org  → civic-web:3000        (civic network)
+              ├── api.iranians.vote    → relayers:8000          (iranians-vote network)
+              └── agora.jomhoor.org    → agora-api:8080         (agora network)
+                                         agora-frontend:80
 ```

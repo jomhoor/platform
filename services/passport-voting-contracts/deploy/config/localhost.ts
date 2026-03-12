@@ -1,4 +1,4 @@
-export const registrationSMT = "0xc1534912902BBe8C54626e2D69288C76a843bc0E";
+export const registrationSMT = "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707";
 export const votingName = "InitialVoting";
 export const bioVotingName = "BioPassportVoting";
 export const minFundingAmount = 0n;

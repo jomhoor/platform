@@ -8,6 +8,16 @@ version: '3.8'
 # - registration-relayer: Identity registration
 # - proof-verification-relayer: Voting (v0.9.0 with Noir support)
 #
+# Networking:
+#   The `iranians-vote` network is also joined by civic-nginx (from the
+#   civic-compass stack) which terminates TLS and proxies HTTPS traffic to
+#   these relayer containers. See civic-compass docker-compose for:
+#     networks:
+#       iranians-vote:
+#         external: true
+#         name: iranians-vote_default
+#   The nginx vhost is in deploy/civic-nginx/api-iranians-vote.conf.
+#
 # Usage:
 #   cp .env.example .env  # Fill in RELAYER_PRIVATE_KEY
 #   docker compose -f docker-compose.production.yaml up -d

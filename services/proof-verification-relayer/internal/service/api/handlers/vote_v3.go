@@ -169,12 +169,44 @@ func parseNoirCallData(data []byte) (NoirVoteCalldata, error) {
 		return config, fmt.Errorf("failed to parse noir ABI: %v", err)
 	}
 
+	// Get method selector from first 4 bytes
+	selector := data[:4]
+
+	// Try executeNoir first (TD3 passports)
 	method, ok := parsedABI.Methods["executeNoir"]
-	if !ok {
-		return config, fmt.Errorf("method 'executeNoir' not found in noir ABI")
+	if ok && compareSelectors(selector, method.ID) {
+		return unpackNoirCalldata(method, data[4:], config)
 	}
 
-	decoded, err := method.Inputs.Unpack(data[4:])
+	// Try executeTD1Noir (TD1 ID cards like INID)
+	td1Method, ok := parsedABI.Methods["executeTD1Noir"]
+	if ok && compareSelectors(selector, td1Method.ID) {
+		return unpackNoirCalldata(td1Method, data[4:], config)
+	}
+
+	// Try executeINID (INID with 23-signal TD3-style layout)
+	// Selector: 0x07eb6b82 = keccak256("executeINID(bytes32,uint256,bytes,bytes)")[:4]
+	// Has same signature as executeTD1Noir, so we can reuse that method for unpacking
+	executeINIDSelector := []byte{0x07, 0xeb, 0x6b, 0x82}
+	if compareSelectors(selector, executeINIDSelector) {
+		// Reuse executeTD1Noir method for unpacking since same signature
+		return unpackNoirCalldata(td1Method, data[4:], config)
+	}
+
+	return config, fmt.Errorf("method not recognized - selector: %x. Expected executeNoir, executeTD1Noir, or executeINID", selector)
+}
+
+// compareSelectors checks if two 4-byte selectors match
+func compareSelectors(a, b []byte) bool {
+	if len(a) != 4 || len(b) != 4 {
+		return false
+	}
+	return a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3]
+}
+
+// unpackNoirCalldata unpacks the calldata for executeNoir or executeTD1Noir methods
+func unpackNoirCalldata(method abi.Method, data []byte, config NoirVoteCalldata) (NoirVoteCalldata, error) {
+	decoded, err := method.Inputs.Unpack(data)
 	if err != nil {
 		return config, fmt.Errorf("failed to unpack noir calldata: %v", err)
 	}

@@ -29,9 +29,9 @@ contracts:
   voting_registry:
     address: null
   lightweight_state:
-    address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"  # StateKeeper
+    address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e" # StateKeeper
   register2:
-    address: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"  # Registration2
+    address: "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1" # Registration2
     block: 0
 
 # Voting V2 configuration (for BioPassportVoting)
@@ -39,15 +39,15 @@ voting_v2:
   enable: true
   rpc: "http://host.docker.internal:8545"
   private_key: "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
-  proposal_state_address: "0x6212cb549De37c25071cF506aB7E115D140D9e42"  # ProposalsState
+  proposal_state_address: "0x0bF7dE8d71820840063D4B8653Fd3F0618986faF" # ProposalsState
   block: 0
   gas_limit: 800000
   check_with_subscribe: false
 
 # State replicator configuration (local addresses)
 replicator:
-  address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"  # StateKeeper
-  source_smt: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"  # RegistrationSMT
+  address: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e" # StateKeeper
+  source_smt: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707" # RegistrationSMT
   root_prefix: "Rarimo root"
 
 # IPFS for proposal metadata

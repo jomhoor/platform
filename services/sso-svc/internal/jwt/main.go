@@ -14,9 +14,9 @@ const (
 	AccessTokenType  = "access"
 	RefreshTokenType = "refresh"
 
-	claimType      = "token_type"
-	claimSub       = "sub"
-	claimClientID  = "client_id"
+	claimType       = "token_type"
+	claimSub        = "sub"
+	claimClientID   = "client_id"
 	claimZKVerified = "zk_verified"
 )
 
@@ -39,9 +39,9 @@ func (i *JWTIssuer) IssueJWT(claim *AuthClaim) (token string, exp time.Time, err
 	exp = time.Now().UTC()
 
 	claims := jwtlib.MapClaims{
-		claimSub:       claim.Subject,
-		claimClientID:  claim.ClientID,
-		claimType:      claim.Type,
+		claimSub:        claim.Subject,
+		claimClientID:   claim.ClientID,
+		claimType:       claim.Type,
 		claimZKVerified: claim.ZKVerified,
 	}
 

@@ -15,7 +15,7 @@ import (
 type ctxKey int
 
 const (
-	logCtxKey         ctxKey = iota
+	logCtxKey ctxKey = iota
 	jwtCtxKey
 	claimCtxKey
 	pairwiseCtxKey

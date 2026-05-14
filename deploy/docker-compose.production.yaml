@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # Production Docker Compose for Iranians.Vote
 # Server: 173.212.214.147 (api.iranians.vote)
@@ -73,7 +73,12 @@ services:
         condition: service_healthy
     networks:
       - iranians-vote
-    command: ["sh", "-c", "proof-verification-relayer migrate up && proof-verification-relayer run service"]
+    command:
+      [
+        "sh",
+        "-c",
+        "proof-verification-relayer migrate up && proof-verification-relayer run service",
+      ]
 
   # ============================================
   # SSO Service Database

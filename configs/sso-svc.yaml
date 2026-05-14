@@ -10,15 +10,15 @@ listener:
   addr: :8000
 
 db:
-  url: "${SSO_DB_URL}"                                # injected by docker-compose environment
+  url: "${SSO_DB_URL}" # injected by docker-compose environment
 
 jwt:
-  secret_key: "${SSO_JWT_SECRET}"                     # 32+ bytes hex-encoded
+  secret_key: "${SSO_JWT_SECRET}" # 32+ bytes hex-encoded
   access_expiration_time: 15m
-  refresh_expiration_time: 720h                       # 30 days
+  refresh_expiration_time: 720h # 30 days
 
 pairwise:
-  secret_key: "${SSO_PAIRWISE_SECRET}"                # 32+ bytes hex-encoded
+  secret_key: "${SSO_PAIRWISE_SECRET}" # 32+ bytes hex-encoded
 
 cookies:
   domain: localhost
@@ -34,7 +34,7 @@ app_attestation:
   ios:
     team_id: "${SSO_IOS_TEAM_ID}"
     bundle_id: "${SSO_IOS_BUNDLE_ID}"
-    environment: "${SSO_IOS_ATTEST_ENV}"              # development | production
+    environment: "${SSO_IOS_ATTEST_ENV}" # development | production
   android:
     package_name: "${SSO_ANDROID_PACKAGE_NAME}"
     signing_cert_digests: "${SSO_ANDROID_SIGNING_CERT_DIGESTS}"

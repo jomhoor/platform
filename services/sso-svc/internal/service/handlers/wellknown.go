@@ -25,7 +25,7 @@ func AppleAppSiteAssociation(w http.ResponseWriter, r *http.Request) {
 					"components": []map[string]any{
 						{
 							// Only intercept the SSO auth path; all other paths fall through to browser.
-							"/": "/auth/sso*",
+							"/":       "/auth/sso*",
 							"comment": "Jomhoor SSO login deep link",
 						},
 					},
@@ -47,7 +47,9 @@ func AppleAppSiteAssociation(w http.ResponseWriter, r *http.Request) {
 // at install time and periodically thereafter.
 //
 // Fill in sha256_cert_fingerprints: run
-//   keytool -printcert -jarfile app-release.apk
+//
+//	keytool -printcert -jarfile app-release.apk
+//
 // and paste the SHA-256 fingerprint (colon-separated hex) below.
 //
 // Reference: https://developer.android.com/training/app-links/verify-android-applinks
@@ -59,7 +61,7 @@ func AssetLinks(w http.ResponseWriter, r *http.Request) {
 	// Both must be listed so App Links verification passes regardless of which cert the
 	// device received (sideloaded/debug vs Play-delivered build).
 	const (
-		uploadCert     = "BE:41:61:12:AA:21:B6:43:4A:75:D4:DF:B6:4C:0A:2A:EB:47:71:47:D3:9F:16:8D:95:2A:63:EB:FF:02:B5:94"
+		uploadCert      = "BE:41:61:12:AA:21:B6:43:4A:75:D4:DF:B6:4C:0A:2A:EB:47:71:47:D3:9F:16:8D:95:2A:63:EB:FF:02:B5:94"
 		playSigningCert = "02:8B:91:97:1D:03:9E:24:71:79:A0:89:BC:FE:A8:43:FF:4E:E8:77:4E:65:C0:24:FF:55:E8:23:5E:15:93:BF"
 	)
 

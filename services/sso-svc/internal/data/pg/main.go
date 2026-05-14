@@ -3,11 +3,11 @@ package pg
 import (
 	"database/sql"
 
+	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
-	_ "github.com/lib/pq"
 )
 
 // DB wraps the raw *sql.DB so other packages can call RawDB() for migrations

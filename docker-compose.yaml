@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # Docker Compose for Rarimo - Voting & ID Registration
 #
@@ -17,7 +17,7 @@ services:
   # ============================================
   # Database (required by proof-verification-relayer)
   # ============================================
-  
+
   postgres:
     image: postgres:15-alpine
     container_name: rarimo-postgres
@@ -39,7 +39,7 @@ services:
   # Registration Relayer (ID Registration)
   # Sends registration transactions to Rarimo L2
   # ============================================
-  
+
   registration-relayer:
     build:
       context: ./services/registration-relayer
@@ -61,7 +61,7 @@ services:
   # Sends vote transactions to Rarimo L2
   # NOTE: Uses feat/noir-voting branch!
   # ============================================
-  
+
   proof-verification-relayer:
     build:
       context: ./services/proof-verification-relayer
@@ -77,13 +77,16 @@ services:
       postgres:
         condition: service_healthy
     entrypoint: ["/bin/sh", "-c"]
-    command: ["proof-verification-relayer migrate up && proof-verification-relayer run service"]
+    command:
+      [
+        "proof-verification-relayer migrate up && proof-verification-relayer run service",
+      ]
     restart: unless-stopped
 
   # ============================================
   # API Gateway (Optional - routes all services)
   # ============================================
-  
+
   nginx:
     image: nginx:alpine
     container_name: rarimo-gateway
@@ -133,7 +136,7 @@ services:
       - KV_VIPER_FILE=/config.yaml
       - SSO_DB_URL=postgres://sso:sso@sso-postgres:5432/sso?sslmode=disable
     env_file:
-      - ./services/sso-svc/.env  # local secrets; copy from .env.example
+      - ./services/sso-svc/.env # local secrets; copy from .env.example
     volumes:
       - ./configs/sso-svc.yaml:/config.yaml:ro
     depends_on:

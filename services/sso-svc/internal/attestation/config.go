@@ -12,14 +12,14 @@ import (
 )
 
 type Config struct {
-	Enabled bool      `fig:"enabled"`
-	IOS     IOSConfig `fig:"ios"`
+	Enabled bool          `fig:"enabled"`
+	IOS     IOSConfig     `fig:"ios"`
 	Android AndroidConfig `fig:"android"`
 }
 
 type IOSConfig struct {
-	TeamID      string `fig:"team_id,required"`
-	BundleID    string `fig:"bundle_id,required"`
+	TeamID   string `fig:"team_id,required"`
+	BundleID string `fig:"bundle_id,required"`
 	// Environment is "development" or "production".
 	// Development accepts the Apple App Attest development environment
 	// (debug builds, TestFlight). Production is for App Store releases.
@@ -31,8 +31,8 @@ type AndroidConfig struct {
 	// SigningCertDigests is a comma-separated list of SHA-256 base64 digests
 	// for allowed signing certificates. Must include both the upload cert digest
 	// and the Play-managed app signing cert digest.
-	SigningCertDigests    string `fig:"signing_cert_digests,required"`
-	RequireStrongIntegrity bool  `fig:"require_strong_integrity"`
+	SigningCertDigests     string `fig:"signing_cert_digests,required"`
+	RequireStrongIntegrity bool   `fig:"require_strong_integrity"`
 }
 
 // SigningCertDigestList returns SigningCertDigests parsed into individual entries.

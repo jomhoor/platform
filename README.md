@@ -34,7 +34,7 @@ platform/
 │   ├── deploy.sh                     # Deploy script (start/stop/update/logs)
 │   ├── docker-compose.production.yaml
 │   ├── docker-compose.agora.yaml     # Agora deliberation stack
-│   └── civic-nginx/                  # Nginx vhost configs for api.iranians.vote
+│   └── nginx-vhosts/                  # Nginx vhost configs for api.iranians.vote
 ├── scripts/                          # Development & debugging utilities
 │   ├── setup-local.sh                # One-command local setup (Hardhat + contracts + Docker)
 │   ├── check-proposals.js            # Inspect on-chain proposals

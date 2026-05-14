@@ -12,7 +12,7 @@ version: '3.8'
 #   docker compose -f docker-compose.agora.yaml up -d
 #
 # The agora network is joined by civic-nginx which terminates TLS and
-# proxies HTTPS traffic. See civic-nginx/agora-jomhoor-org.conf.
+# proxies HTTPS traffic. See nginx-vhosts/agora-jomhoor-org.conf.
 
 services:
   # ============================================

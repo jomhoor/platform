@@ -16,7 +16,7 @@ version: '3.8'
 #       iranians-vote:
 #         external: true
 #         name: iranians-vote_default
-#   The nginx vhost is in deploy/civic-nginx/api-iranians-vote.conf.
+#   The nginx vhost is in deploy/nginx-vhosts/api-iranians-vote.conf.
 #
 # Usage:
 #   cp .env.example .env  # Fill in RELAYER_PRIVATE_KEY
@@ -75,9 +75,62 @@ services:
       - iranians-vote
     command: ["sh", "-c", "proof-verification-relayer migrate up && proof-verification-relayer run service"]
 
+  # ============================================
+  # SSO Service Database
+  # ============================================
+
+  sso-postgres:
+    image: postgres:15-alpine
+    container_name: sso-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${SSO_POSTGRES_USER:-sso}
+      POSTGRES_PASSWORD: ${SSO_POSTGRES_PASSWORD:?SSO_POSTGRES_PASSWORD required}
+      POSTGRES_DB: sso
+    volumes:
+      - sso_postgres_data:/var/lib/postgresql/data
+    networks:
+      - iranians-vote
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sso -d sso"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # SSO Service
+  # ============================================
+
+  sso-svc:
+    image: ghcr.io/jomhoor/sso-svc:latest
+    container_name: sso-svc
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8003:8000"
+    environment:
+      - KV_VIPER_FILE=/config.yaml
+      - SSO_DB_URL=postgres://sso:${SSO_POSTGRES_PASSWORD}@sso-postgres:5432/sso?sslmode=disable
+      - SSO_JWT_SECRET=${SSO_JWT_SECRET:?SSO_JWT_SECRET required}
+      - SSO_PAIRWISE_SECRET=${SSO_PAIRWISE_SECRET:?SSO_PAIRWISE_SECRET required}
+      - SSO_IOS_TEAM_ID=${SSO_IOS_TEAM_ID}
+      - SSO_IOS_BUNDLE_ID=${SSO_IOS_BUNDLE_ID:-org.jomhoor.app}
+      - SSO_IOS_ATTEST_ENV=${SSO_IOS_ATTEST_ENV:-production}
+      - SSO_ANDROID_PACKAGE_NAME=${SSO_ANDROID_PACKAGE_NAME:-org.jomhoor.app}
+      - SSO_ANDROID_SIGNING_CERT_DIGESTS=${SSO_ANDROID_SIGNING_CERT_DIGESTS}
+      - SSO_ANDROID_REQUIRE_STRONG_INTEGRITY=${SSO_ANDROID_REQUIRE_STRONG_INTEGRITY:-true}
+    # config.yaml is baked into the image (see services/sso-svc/Dockerfile);
+    # all host-specific values come from env vars above.
+    depends_on:
+      sso-postgres:
+        condition: service_healthy
+    networks:
+      - iranians-vote
+    command: ["sh", "-c", "sso-svc migrate up && sso-svc run service"]
+
 networks:
   iranians-vote:
     driver: bridge
 
 volumes:
   postgres_data:
+  sso_postgres_data:

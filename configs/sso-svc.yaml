@@ -1,0 +1,41 @@
+# sso-svc local development configuration
+# Secrets come from environment variables (set in docker-compose env_file or shell).
+# Copy platform/services/sso-svc/.env.example → platform/services/sso-svc/.env and fill in values.
+
+log:
+  level: debug
+  disable_sentry: true
+
+listener:
+  addr: :8000
+
+db:
+  url: "${SSO_DB_URL}"                                # injected by docker-compose environment
+
+jwt:
+  secret_key: "${SSO_JWT_SECRET}"                     # 32+ bytes hex-encoded
+  access_expiration_time: 15m
+  refresh_expiration_time: 720h                       # 30 days
+
+pairwise:
+  secret_key: "${SSO_PAIRWISE_SECRET}"                # 32+ bytes hex-encoded
+
+cookies:
+  domain: localhost
+  secure: false
+  same_site: lax
+
+# App attestation is disabled locally; register with dev attestation env on real devices.
+verifier:
+  enabled: false
+
+app_attestation:
+  enabled: false
+  ios:
+    team_id: "${SSO_IOS_TEAM_ID}"
+    bundle_id: "${SSO_IOS_BUNDLE_ID}"
+    environment: "${SSO_IOS_ATTEST_ENV}"              # development | production
+  android:
+    package_name: "${SSO_ANDROID_PACKAGE_NAME}"
+    signing_cert_digests: "${SSO_ANDROID_SIGNING_CERT_DIGESTS}"
+    require_strong_integrity: false

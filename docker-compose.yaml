@@ -96,8 +96,56 @@ services:
       - proof-verification-relayer
     restart: unless-stopped
 
+  # ============================================
+  # SSO Service Database (separate from rarimo postgres)
+  # Port 5433 to avoid conflict with rarimo-postgres on 5432
+  # ============================================
+
+  sso-postgres:
+    image: postgres:15-alpine
+    container_name: sso-postgres
+    environment:
+      POSTGRES_USER: sso
+      POSTGRES_PASSWORD: sso
+      POSTGRES_DB: sso
+    ports:
+      - "5433:5432"
+    volumes:
+      - sso_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sso -d sso"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # SSO Service (Jomhoor wallet authentication)
+  # ============================================
+
+  sso-svc:
+    build:
+      context: ./services/sso-svc
+      dockerfile: Dockerfile
+    container_name: sso-svc
+    ports:
+      - "8003:8000"
+    environment:
+      - KV_VIPER_FILE=/config.yaml
+      - SSO_DB_URL=postgres://sso:sso@sso-postgres:5432/sso?sslmode=disable
+    env_file:
+      - ./services/sso-svc/.env  # local secrets; copy from .env.example
+    volumes:
+      - ./configs/sso-svc.yaml:/config.yaml:ro
+    depends_on:
+      sso-postgres:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["sso-svc migrate up && sso-svc run service"]
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  sso_postgres_data:
 
 networks:
   default:

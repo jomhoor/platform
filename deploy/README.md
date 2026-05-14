@@ -80,7 +80,7 @@ These steps are documented for reference — they are already applied on the ser
    ```
 
 2. **Nginx vhost** — the config file is version-controlled at
-   `deploy/civic-nginx/api-iranians-vote.conf` and deployed to
+   `deploy/nginx-vhosts/api-iranians-vote.conf` and deployed to
    `/opt/civic-compass/nginx/conf.d/api-iranians-vote.conf` on the server.
 
 3. **SSL certificates** — managed by certbot (webroot authenticator) running
@@ -91,7 +91,7 @@ These steps are documented for reference — they are already applied on the ser
 
 ```bash
 # Copy updated config to server
-scp deploy/civic-nginx/api-iranians-vote.conf \
+scp deploy/nginx-vhosts/api-iranians-vote.conf \
     iranians-vote-vps:/opt/civic-compass/nginx/conf.d/api-iranians-vote.conf
 
 # Reload nginx (no downtime)
@@ -223,7 +223,7 @@ and `compass.jomhoor.org`.
 
 2. **Deploy nginx vhost config:**
    ```bash
-   scp deploy/civic-nginx/agora-jomhoor-org.conf \
+   scp deploy/nginx-vhosts/agora-jomhoor-org.conf \
        iranians-vote-vps:/opt/civic-compass/nginx/conf.d/agora-jomhoor-org.conf
    ```
 

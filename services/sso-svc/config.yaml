@@ -1,0 +1,42 @@
+log:
+  level: debug
+  disable_sentry: true
+
+listener:
+  addr: :8000
+
+db:
+  url: ${SSO_DB_URL}
+
+jwt:
+  secret_key: ${SSO_JWT_SECRET}
+  access_expiration_time: 1h
+  refresh_expiration_time: 24h
+
+pairwise:
+  secret_key: ${SSO_PAIRWISE_SECRET}
+
+cookies:
+  domain: jomhoor.org
+  secure: true
+  same_site: 4
+
+# Global ZKP gate — off for Phase 1 baseline.
+# Per-client zkRequired is enforced separately in sso_clients table.
+verifier:
+  enabled: false
+
+app_attestation:
+  enabled: true
+  # Set to "development" for local/TestFlight builds; "production" for App Store.
+  ios:
+    team_id: ${SSO_IOS_TEAM_ID}
+    bundle_id: ${SSO_IOS_BUNDLE_ID}
+    environment: ${SSO_IOS_ATTEST_ENV}
+  android:
+    package_name: ${SSO_ANDROID_PACKAGE_NAME}
+    # Comma-separated SHA-256 digests of allowed signing certificates.
+    # Include both upload-cert digest AND Play-managed signing cert digest.
+    signing_cert_digests: ${SSO_ANDROID_SIGNING_CERT_DIGESTS}
+    # Set to false in dev to accept MEETS_BASIC_INTEGRITY from debug builds.
+    require_strong_integrity: ${SSO_ANDROID_REQUIRE_STRONG_INTEGRITY}

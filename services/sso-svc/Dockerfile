@@ -13,6 +13,7 @@ RUN GOOS=linux go build -o /usr/local/bin/sso-svc .
 FROM alpine:3.20
 
 COPY --from=buildbase /usr/local/bin/sso-svc /usr/local/bin/sso-svc
+COPY config.yaml /config.yaml
 RUN apk add --no-cache ca-certificates
 
 ENTRYPOINT ["sso-svc"]

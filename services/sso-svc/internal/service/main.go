@@ -8,6 +8,7 @@ import (
 	"github.com/jomhoor/sso-svc/internal/config"
 	"github.com/jomhoor/sso-svc/internal/cookies"
 	"github.com/jomhoor/sso-svc/internal/data/pg"
+	"github.com/jomhoor/sso-svc/internal/deeplink"
 	"github.com/jomhoor/sso-svc/internal/jwt"
 	"github.com/jomhoor/sso-svc/internal/pairwise"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -20,6 +21,7 @@ type service struct {
 	pairwise    *pairwise.Deriver
 	attestation *attestation.Config
 	cookies     *cookies.Cookies
+	deeplink    *deeplink.Config
 	db          *pg.DB
 }
 
@@ -37,6 +39,7 @@ func newService(cfg config.Config) *service {
 		pairwise:    cfg.Pairwise(),
 		attestation: cfg.Attestation(),
 		cookies:     cfg.Cookies(),
+		deeplink:    cfg.Deeplink(),
 		db:          cfg.DB(),
 	}
 }

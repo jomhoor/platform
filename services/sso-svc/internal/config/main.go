@@ -4,6 +4,7 @@ import (
 	"github.com/jomhoor/sso-svc/internal/attestation"
 	"github.com/jomhoor/sso-svc/internal/cookies"
 	"github.com/jomhoor/sso-svc/internal/data/pg"
+	"github.com/jomhoor/sso-svc/internal/deeplink"
 	"github.com/jomhoor/sso-svc/internal/jwt"
 	"github.com/jomhoor/sso-svc/internal/pairwise"
 	"gitlab.com/distributed_lab/kit/comfig"
@@ -17,6 +18,7 @@ type Config interface {
 	pairwise.Pairwiser
 	attestation.Attestationer
 	cookies.Cookier
+	deeplink.Deeplinker
 	pg.DBer
 }
 
@@ -27,6 +29,7 @@ type config struct {
 	pairwise.Pairwiser
 	attestation.Attestationer
 	cookies.Cookier
+	deeplink.Deeplinker
 	pg.DBer
 	getter kv.Getter
 }
@@ -40,6 +43,7 @@ func New(getter kv.Getter) Config {
 		Pairwiser:     pairwise.NewPairwiser(getter),
 		Attestationer: attestation.NewAttestationer(getter),
 		Cookier:       cookies.NewCookier(getter),
+		Deeplinker:    deeplink.NewDeeplinker(getter),
 		DBer:          pg.NewDBer(getter),
 	}
 }

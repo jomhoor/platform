@@ -20,6 +20,7 @@ func (s *service) router() chi.Router {
 			handlers.CtxPairwise(s.pairwise),
 			handlers.CtxAttestation(s.attestation),
 			handlers.CtxCookies(s.cookies),
+			handlers.CtxDeeplink(s.deeplink),
 			handlers.CtxDB(s.db),
 		),
 	)
@@ -39,6 +40,9 @@ func (s *service) router() chi.Router {
 		r.Get("/authorize", handlers.Authorize)
 		r.Post("/authorize/verify", handlers.Verify)
 		r.Post("/tokens/exchange", handlers.Exchange)
+
+		// Public client metadata for consent screen (M4)
+		r.Get("/clients/{id}", handlers.GetClient)
 
 		// Token introspection (M3)
 		r.With(middleware.AuthMiddleware(s.jwt, s.log, jwt.AccessTokenType)).

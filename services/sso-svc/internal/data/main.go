@@ -111,3 +111,41 @@ type SSOChallengesQ interface {
 	// DeleteExpired purges expired challenges (called from a background job or on demand).
 	DeleteExpired() error
 }
+
+// WalletChallenge is a short-lived nonce issued for wallet registration (M2).
+// Kept separate from SSOChallenge because registration has no client_id / PKCE.
+type WalletChallenge struct {
+	Nonce     string    `db:"nonce"`
+	Platform  string    `db:"platform"`
+	ExpiresAt time.Time `db:"expires_at"`
+	Used      bool      `db:"used"`
+}
+
+type WalletChallengesQ interface {
+	// Insert stores a new wallet registration challenge.
+	Insert(c WalletChallenge) error
+	// Consume atomically marks the nonce as used and returns it.
+	// Returns nil (no error) when the nonce is not found, already used, or expired.
+	Consume(nonce string) (*WalletChallenge, error)
+}
+
+// AuthCode is a one-time authorization code issued by /v1/authorize/verify
+// and consumed by /v1/tokens/exchange (auth-code + PKCE flow, M3).
+type AuthCode struct {
+	Code            string    `db:"code"`
+	ClientID        string    `db:"client_id"`
+	PairwiseSubject string    `db:"pairwise_subject"`
+	CodeChallenge   string    `db:"code_challenge"`
+	ZKVerified      bool      `db:"zk_verified"`
+	ExpiresAt       time.Time `db:"expires_at"`
+	Used            bool      `db:"used"`
+	CreatedAt       time.Time `db:"created_at"`
+}
+
+type AuthCodesQ interface {
+	// Insert stores a new auth code.
+	Insert(c AuthCode) error
+	// Consume atomically marks the code as used and returns it.
+	// Returns nil (no error) when the code is not found, already used, or expired.
+	Consume(code string) (*AuthCode, error)
+}

@@ -7,6 +7,7 @@ import (
 	"github.com/jomhoor/sso-svc/internal/attestation"
 	"github.com/jomhoor/sso-svc/internal/cookies"
 	"github.com/jomhoor/sso-svc/internal/data/pg"
+	"github.com/jomhoor/sso-svc/internal/deeplink"
 	"github.com/jomhoor/sso-svc/internal/jwt"
 	"github.com/jomhoor/sso-svc/internal/pairwise"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -21,6 +22,7 @@ const (
 	pairwiseCtxKey
 	attestationCtxKey
 	cookiesCtxKey
+	deeplinkCtxKey
 	dbCtxKey
 )
 
@@ -62,6 +64,12 @@ func CtxCookies(c *cookies.Cookies) func(context.Context) context.Context {
 	}
 }
 
+func CtxDeeplink(d *deeplink.Config) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, deeplinkCtxKey, d)
+	}
+}
+
 func CtxDB(db *pg.DB) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, dbCtxKey, db)
@@ -92,6 +100,10 @@ func Attestation(r *http.Request) *attestation.Config {
 
 func Cookies(r *http.Request) *cookies.Cookies {
 	return r.Context().Value(cookiesCtxKey).(*cookies.Cookies)
+}
+
+func Deeplink(r *http.Request) *deeplink.Config {
+	return r.Context().Value(deeplinkCtxKey).(*deeplink.Config)
 }
 
 func DB(r *http.Request) *pg.DB {

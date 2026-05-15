@@ -21,10 +21,18 @@ func (d *DB) PairwiseSubjects() data.PairwiseSubjectsQ {
 // Upsert inserts a new pairwise subject. If the (wallet_id, client_id) pair already
 // exists, it does nothing and returns the existing row.
 func (q *pairwiseQ) Upsert(ps data.PairwiseSubject) (data.PairwiseSubject, error) {
+	// Omit id when empty so Postgres DEFAULT gen_random_uuid() applies.
+	cols := []string{"wallet_id", "client_id", "subject"}
+	vals := []interface{}{ps.WalletID, ps.ClientID, ps.Subject}
+	if ps.ID != "" {
+		cols = append([]string{"id"}, cols...)
+		vals = append([]interface{}{ps.ID}, vals...)
+	}
+
 	insertSQL, args, err := sq.
 		Insert(pairwiseTable).
-		Columns("id", "wallet_id", "client_id", "subject").
-		Values(ps.ID, ps.WalletID, ps.ClientID, ps.Subject).
+		Columns(cols...).
+		Values(vals...).
 		Suffix("ON CONFLICT (wallet_id, client_id) DO NOTHING").
 		PlaceholderFormat(sq.Dollar).
 		ToSql()

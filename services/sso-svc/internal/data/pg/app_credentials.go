@@ -19,10 +19,18 @@ func (d *DB) AppCredentials() data.AppCredentialsQ {
 }
 
 func (q *credentialsQ) Insert(c data.AppCredential) (data.AppCredential, error) {
+	// Omit id when empty so Postgres DEFAULT gen_random_uuid() applies.
+	cols := []string{"wallet_id", "platform", "credential_id", "attestation_key_id", "attestation_status"}
+	vals := []interface{}{c.WalletID, c.Platform, c.CredentialID, c.AttestationKeyID, c.AttestationStatus}
+	if c.ID != "" {
+		cols = append([]string{"id"}, cols...)
+		vals = append([]interface{}{c.ID}, vals...)
+	}
+
 	query, args, err := sq.
 		Insert(credentialsTable).
-		Columns("id", "wallet_id", "platform", "credential_id", "attestation_key_id", "attestation_status").
-		Values(c.ID, c.WalletID, c.Platform, c.CredentialID, c.AttestationKeyID, c.AttestationStatus).
+		Columns(cols...).
+		Values(vals...).
 		Suffix("RETURNING id, wallet_id, platform, credential_id, attestation_key_id, attestation_status, attested_at, last_verified_at").
 		PlaceholderFormat(sq.Dollar).
 		ToSql()

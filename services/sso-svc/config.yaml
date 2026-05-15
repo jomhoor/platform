@@ -21,6 +21,13 @@ cookies:
   secure: true
   same_site: 4
 
+# Wallet-app deep link (M3 /v1/authorize redirect target).
+# Universal Link is the primary; iOS AASA / Android assetlinks intercept it.
+# CustomScheme is reserved for local-dev / sideloaded builds.
+deeplink:
+  universal_link_base: ${SSO_DEEPLINK_UNIVERSAL_BASE}
+  custom_scheme: ${SSO_DEEPLINK_CUSTOM_SCHEME}
+
 # Global ZKP gate — off for Phase 1 baseline.
 # Per-client zkRequired is enforced separately in sso_clients table.
 verifier:

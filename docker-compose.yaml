@@ -26,7 +26,7 @@ services:
       POSTGRES_PASSWORD: rarimo
       POSTGRES_DB: proof_verification
     ports:
-      - "5432:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -97,11 +97,12 @@ services:
     depends_on:
       - registration-relayer
       - proof-verification-relayer
+      - sso-svc
     restart: unless-stopped
 
   # ============================================
   # SSO Service Database (separate from rarimo postgres)
-  # Port 5433 to avoid conflict with rarimo-postgres on 5432
+  # Port 5433 to avoid conflict with rarimo-postgres (5434) and civic-db-1 (5432)
   # ============================================
 
   sso-postgres:

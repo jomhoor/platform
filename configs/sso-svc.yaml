@@ -1,6 +1,7 @@
-# sso-svc local development configuration
-# Secrets come from environment variables (set in docker-compose env_file or shell).
-# Copy platform/services/sso-svc/.env.example → platform/services/sso-svc/.env and fill in values.
+# sso-svc LOCAL DEVELOPMENT configuration
+# distributed_lab/kit reads YAML values literally — no ${VAR} expansion at runtime.
+# Production config.yaml uses ${VAR} placeholders intended for envsubst/Helm.
+# Secrets here are local-dev-only and safe to commit (never used in production).
 
 log:
   level: debug
@@ -10,32 +11,40 @@ listener:
   addr: :8000
 
 db:
-  url: "${SSO_DB_URL}" # injected by docker-compose environment
+  url: "postgres://sso:sso@sso-postgres:5432/sso?sslmode=disable"
 
 jwt:
-  secret_key: "${SSO_JWT_SECRET}" # 32+ bytes hex-encoded
+  secret_key: "a6a0200cc01e74931b9270d7e3b7f115262cfce70b4645d00ceed56c96078955"
   access_expiration_time: 15m
   refresh_expiration_time: 720h # 30 days
 
 pairwise:
-  secret_key: "${SSO_PAIRWISE_SECRET}" # 32+ bytes hex-encoded
+  secret_key: "c7eb61ce38cc74fd89b5f0df7c00840e2454cfb1f1d4ce428a5fce5fa298391e"
 
 cookies:
   domain: localhost
   secure: false
-  same_site: lax
+  same_site: 2 # http.SameSiteLaxMode (1=Default,2=Lax,3=Strict,4=None)
 
-# App attestation is disabled locally; register with dev attestation env on real devices.
+# Wallet-app deep link — mobile app receives challenge via this URL.
+# Custom scheme works for local device testing without HTTPS/AASA.
+deeplink:
+  universal_link_base: "jomhoor://auth/sso"
+  custom_scheme: "jomhoor://auth/sso"
+
+# App attestation is disabled locally.
 verifier:
   enabled: false
 
 app_attestation:
   enabled: false
+  # Fields below are required by the config struct (non-empty) but not validated
+  # unless enabled=true.
   ios:
-    team_id: "${SSO_IOS_TEAM_ID}"
-    bundle_id: "${SSO_IOS_BUNDLE_ID}"
-    environment: "${SSO_IOS_ATTEST_ENV}" # development | production
+    team_id: "H2N3RZ4J46"
+    bundle_id: "org.jomhoor.app"
+    environment: "development"
   android:
-    package_name: "${SSO_ANDROID_PACKAGE_NAME}"
-    signing_cert_digests: "${SSO_ANDROID_SIGNING_CERT_DIGESTS}"
+    package_name: "org.jomhoor.app"
+    signing_cert_digests: "local-dev-placeholder"
     require_strong_integrity: false

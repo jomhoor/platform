@@ -1,8 +1,6 @@
 package cookies
 
 import (
-	"net/http"
-
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure"
 	"gitlab.com/distributed_lab/kit/comfig"
@@ -10,9 +8,9 @@ import (
 )
 
 type Cookies struct {
-	Domain   string        `fig:"domain,required"`
-	Secure   bool          `fig:"secure"`
-	SameSite http.SameSite `fig:"same_site"`
+	Domain   string `fig:"domain,required"`
+	Secure   bool   `fig:"secure"`
+	SameSite int    `fig:"same_site"` // http.SameSite constant: 0=Default,1=Lax,2=Strict,3=None
 }
 
 type Cookier interface {

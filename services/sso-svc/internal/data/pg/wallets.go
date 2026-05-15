@@ -19,10 +19,18 @@ func (d *DB) Wallets() data.WalletsQ {
 }
 
 func (q *walletsQ) Insert(w data.Wallet) (data.Wallet, error) {
+	// Omit id when empty so Postgres DEFAULT gen_random_uuid() applies.
+	cols := []string{"wallet_address", "public_key_x", "public_key_y"}
+	vals := []interface{}{w.WalletAddress, w.PublicKeyX, w.PublicKeyY}
+	if w.ID != "" {
+		cols = append([]string{"id"}, cols...)
+		vals = append([]interface{}{w.ID}, vals...)
+	}
+
 	query, args, err := sq.
 		Insert(walletsTable).
-		Columns("id", "wallet_address", "public_key_x", "public_key_y").
-		Values(w.ID, w.WalletAddress, w.PublicKeyX, w.PublicKeyY).
+		Columns(cols...).
+		Values(vals...).
 		Suffix("RETURNING id, wallet_address, public_key_x, public_key_y, registered_at").
 		PlaceholderFormat(sq.Dollar).
 		ToSql()

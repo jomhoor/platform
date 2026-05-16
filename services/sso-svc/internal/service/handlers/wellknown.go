@@ -15,13 +15,20 @@ import (
 // Reference: https://developer.apple.com/documentation/xcode/supporting-associated-domains
 func AppleAppSiteAssociation(w http.ResponseWriter, r *http.Request) {
 	// TEAM_ID.BUNDLE_ID — matches app.config.ts ios.associatedDomains entry.
-	const appID = "H2N3RZ4J46.org.jomhoor.app"
+	// jomhoor-wallet's env.js withEnvSuffix() appends ".development"/".staging" to the
+	// bundle id for non-production builds. All three variants must be listed so dev/TestFlight
+	// builds can also intercept Universal Links.
+	appIDs := []string{
+		"H2N3RZ4J46.org.jomhoor.app",
+		"H2N3RZ4J46.org.jomhoor.app.staging",
+		"H2N3RZ4J46.org.jomhoor.app.development",
+	}
 
 	payload := map[string]any{
 		"applinks": map[string]any{
 			"details": []map[string]any{
 				{
-					"appIDs": []string{appID},
+					"appIDs": appIDs,
 					"components": []map[string]any{
 						{
 							// Only intercept the SSO auth path; all other paths fall through to browser.
@@ -65,15 +72,25 @@ func AssetLinks(w http.ResponseWriter, r *http.Request) {
 		playSigningCert = "02:8B:91:97:1D:03:9E:24:71:79:A0:89:BC:FE:A8:43:FF:4E:E8:77:4E:65:C0:24:FF:55:E8:23:5E:15:93:BF"
 	)
 
-	payload := []map[string]any{
-		{
+	// jomhoor-wallet's env.js withEnvSuffix() appends ".development"/".staging" to the
+	// android package id for non-production builds. List all three so App Links verify
+	// for dev/staging/production installs alike.
+	packages := []string{
+		"org.jomhoor.app",
+		"org.jomhoor.app.staging",
+		"org.jomhoor.app.development",
+	}
+
+	payload := make([]map[string]any, 0, len(packages))
+	for _, pkg := range packages {
+		payload = append(payload, map[string]any{
 			"relation": []string{"delegate_permission/common.handle_all_urls"},
 			"target": map[string]any{
 				"namespace":                "android_app",
-				"package_name":             "org.jomhoor.app",
+				"package_name":             pkg,
 				"sha256_cert_fingerprints": []string{uploadCert, playSigningCert},
 			},
-		},
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

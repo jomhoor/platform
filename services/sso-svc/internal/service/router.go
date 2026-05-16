@@ -31,6 +31,13 @@ func (s *service) router() chi.Router {
 	r.Get("/.well-known/apple-app-site-association", handlers.AppleAppSiteAssociation)
 	r.Get("/.well-known/assetlinks.json", handlers.AssetLinks)
 
+	// Deep-link target for the SSO flow. iOS Universal Link interception is the
+	// primary path (app opens before the browser makes a network request).
+	// This handler is the fallback for browser-initiated navigations where iOS
+	// does not intercept: it 302-redirects to the jomhoor:// custom scheme so
+	// the wallet app still opens regardless.
+	r.Get("/auth/sso", handlers.AuthSsoFallback)
+
 	r.Route("/v1", func(r chi.Router) {
 		// Wallet registration (M2)
 		r.Post("/wallets/challenge", handlers.WalletChallenge)

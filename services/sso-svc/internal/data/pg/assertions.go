@@ -55,3 +55,37 @@ func (q *assertionsQ) GetByWalletAndType(walletID, assertionType string) (*data.
 	}
 	return &a, nil
 }
+
+// Insert writes a new assertion row and returns the persisted record (including
+// the DB-generated id and issued_at). The caller should leave a.ID empty so
+// Postgres DEFAULT gen_random_uuid() assigns it.
+func (q *assertionsQ) Insert(a data.Assertion) (data.Assertion, error) {
+	cols := []string{"wallet_id", "assertion_type", "status", "nullifier_hash", "source"}
+	vals := []interface{}{a.WalletID, a.AssertionType, a.Status, a.NullifierHash, a.Source}
+
+	if a.ExpiresAt != nil {
+		cols = append(cols, "expires_at")
+		vals = append(vals, a.ExpiresAt)
+	}
+
+	query, args, err := sq.
+		Insert(assertionsTable).
+		Columns(cols...).
+		Values(vals...).
+		Suffix("RETURNING id, wallet_id, assertion_type, status, nullifier_hash, source, issued_at, expires_at").
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	if err != nil {
+		return data.Assertion{}, errors.Wrap(err, "build insert assertion sql")
+	}
+
+	var out data.Assertion
+	row := q.db.QueryRow(query, args...)
+	if err := row.Scan(
+		&out.ID, &out.WalletID, &out.AssertionType, &out.Status,
+		&out.NullifierHash, &out.Source, &out.IssuedAt, &out.ExpiresAt,
+	); err != nil {
+		return data.Assertion{}, errors.Wrap(err, "scan inserted assertion")
+	}
+	return out, nil
+}

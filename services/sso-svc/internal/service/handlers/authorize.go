@@ -245,7 +245,6 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	zkVerified := false
 	if client.ZKRequired {
 		assertion, err := db.Assertions().GetByWalletAndType(wallet.ID, "zk_verified")
 		if err != nil {
@@ -259,14 +258,9 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 			ape.RenderErr(w, problems.Forbidden())
 			return
 		}
-		zkVerified = true
-	} else {
-		// Best-effort snapshot: surface the assertion if it exists, but don't gate.
-		assertion, err := db.Assertions().GetByWalletAndType(wallet.ID, "zk_verified")
-		if err == nil && assertion != nil {
-			zkVerified = true
-		}
 	}
+	// Assertions are fetched live from the DB at /v1/tokens/validate time;
+	// they are not stored on the auth code.
 
 	// 6. Pairwise subject — stable per (wallet, client), unlinkable across clients.
 	subject := Pairwise(r).Derive(wallet.ID, client.ID)
@@ -292,7 +286,6 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 		ClientID:        client.ID,
 		PairwiseSubject: subject,
 		CodeChallenge:   challenge.CodeChallenge,
-		ZKVerified:      zkVerified,
 		ExpiresAt:       time.Now().UTC().Add(authCodeTTL),
 	}); err != nil {
 		Log(r).WithError(err).Error("insert auth code")

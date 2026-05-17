@@ -87,6 +87,8 @@ type AppCredentialsQ interface {
 }
 
 type AssertionsQ interface {
+	// Insert creates a new assertion row.
+	Insert(a Assertion) (Assertion, error)
 	// GetByWalletAndType returns the latest assertion of the given type for a wallet.
 	GetByWalletAndType(walletID, assertionType string) (*Assertion, error)
 }
@@ -136,7 +138,6 @@ type AuthCode struct {
 	ClientID        string    `db:"client_id"`
 	PairwiseSubject string    `db:"pairwise_subject"`
 	CodeChallenge   string    `db:"code_challenge"`
-	ZKVerified      bool      `db:"zk_verified"`
 	ExpiresAt       time.Time `db:"expires_at"`
 	Used            bool      `db:"used"`
 	CreatedAt       time.Time `db:"created_at"`

@@ -112,10 +112,9 @@ func Exchange(w http.ResponseWriter, r *http.Request) {
 	issuer := JWT(r)
 
 	accessClaim := &jwt.AuthClaim{
-		Subject:    code.PairwiseSubject,
-		ClientID:   code.ClientID,
-		Type:       jwt.AccessTokenType,
-		ZKVerified: code.ZKVerified,
+		Subject:  code.PairwiseSubject,
+		ClientID: code.ClientID,
+		Type:     jwt.AccessTokenType,
 	}
 	accessToken, exp, err := issuer.IssueJWT(accessClaim)
 	if err != nil {
@@ -125,10 +124,9 @@ func Exchange(w http.ResponseWriter, r *http.Request) {
 	}
 
 	refreshClaim := &jwt.AuthClaim{
-		Subject:    code.PairwiseSubject,
-		ClientID:   code.ClientID,
-		Type:       jwt.RefreshTokenType,
-		ZKVerified: code.ZKVerified,
+		Subject:  code.PairwiseSubject,
+		ClientID: code.ClientID,
+		Type:     jwt.RefreshTokenType,
 	}
 	refreshToken, _, err := issuer.IssueJWT(refreshClaim)
 	if err != nil {
@@ -183,13 +181,11 @@ func Validate(w http.ResponseWriter, r *http.Request) {
 	ps, err := DB(r).PairwiseSubjects().GetBySubject(claim.Subject)
 	if err != nil {
 		Log(r).WithError(err).Warn("validate: lookup pairwise subject")
-		// Non-fatal — fall back to the claim value rather than erroring.
-		zkVerified = claim.ZKVerified
+		// Non-fatal — default to false; validate is the authoritative source, not the token.
 	} else if ps != nil {
 		assertion, err := DB(r).Assertions().GetByWalletAndType(ps.WalletID, "zk_verified")
 		if err != nil {
 			Log(r).WithError(err).Warn("validate: lookup zk_verified assertion")
-			zkVerified = claim.ZKVerified
 		} else {
 			zkVerified = assertion != nil
 		}
@@ -216,10 +212,9 @@ func Refresh(w http.ResponseWriter, r *http.Request) {
 	refreshClaim := Claim(r)
 
 	accessClaim := &jwt.AuthClaim{
-		Subject:    refreshClaim.Subject,
-		ClientID:   refreshClaim.ClientID,
-		Type:       jwt.AccessTokenType,
-		ZKVerified: refreshClaim.ZKVerified,
+		Subject:  refreshClaim.Subject,
+		ClientID: refreshClaim.ClientID,
+		Type:     jwt.AccessTokenType,
 	}
 
 	accessToken, _, err := JWT(r).IssueJWT(accessClaim)

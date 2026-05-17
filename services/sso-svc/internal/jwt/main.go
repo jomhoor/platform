@@ -14,10 +14,9 @@ const (
 	AccessTokenType  = "access"
 	RefreshTokenType = "refresh"
 
-	claimType       = "token_type"
-	claimSub        = "sub"
-	claimClientID   = "client_id"
-	claimZKVerified = "zk_verified"
+	claimType     = "token_type"
+	claimSub      = "sub"
+	claimClientID = "client_id"
 )
 
 type AuthClaim struct {
@@ -25,8 +24,6 @@ type AuthClaim struct {
 	Subject  string
 	ClientID string
 	Type     string
-	// ZKVerified is informational in Phase 1; expected false for most users.
-	ZKVerified bool
 }
 
 type JWTIssuer struct {
@@ -39,10 +36,9 @@ func (i *JWTIssuer) IssueJWT(claim *AuthClaim) (token string, exp time.Time, err
 	exp = time.Now().UTC()
 
 	claims := jwtlib.MapClaims{
-		claimSub:        claim.Subject,
-		claimClientID:   claim.ClientID,
-		claimType:       claim.Type,
-		claimZKVerified: claim.ZKVerified,
+		claimSub:      claim.Subject,
+		claimClientID: claim.ClientID,
+		claimType:     claim.Type,
 	}
 
 	switch claim.Type {
@@ -81,16 +77,14 @@ func (i *JWTIssuer) ValidateJWT(str string) (*AuthClaim, error) {
 	sub, _ := claims[claimSub].(string)
 	cid, _ := claims[claimClientID].(string)
 	typ, _ := claims[claimType].(string)
-	zkv, _ := claims[claimZKVerified].(bool)
 
 	if sub == "" || typ == "" {
 		return nil, fmt.Errorf("malformed token: missing required claims")
 	}
 
 	return &AuthClaim{
-		Subject:    sub,
-		ClientID:   cid,
-		Type:       typ,
-		ZKVerified: zkv,
+		Subject:  sub,
+		ClientID: cid,
+		Type:     typ,
 	}, nil
 }

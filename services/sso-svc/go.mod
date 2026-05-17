@@ -23,6 +23,7 @@ require (
 	github.com/certifi/gocertifi v0.0.0-20200211180108-c7c1fbc02894 // indirect
 	github.com/dchest/blake512 v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
+	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/getsentry/sentry-go v0.7.0 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
@@ -42,6 +43,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/spf13/viper v1.3.2 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 	gitlab.com/distributed_lab/lorem v0.2.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jomhoor/sso-svc/internal/attestation"
 	"github.com/jomhoor/sso-svc/internal/crypto"
 	"github.com/jomhoor/sso-svc/internal/data"
 	"github.com/pkg/errors"
@@ -75,6 +76,20 @@ type registerRequest struct {
 type publicKeyFields struct {
 	X string `json:"x"`
 	Y string `json:"y"`
+}
+
+// iOSAttestPayload is the appAttestation wire format for iOS.
+type iOSAttestPayload struct {
+	// KeyID is the base64-encoded key identifier from DCAppAttestService.generateKey.
+	KeyID string `json:"keyId"`
+	// Attestation is the base64-encoded CBOR attestation object from DCAppAttestService.attestKey.
+	Attestation string `json:"attestation"`
+}
+
+// androidAttestPayload is the appAttestation wire format for Android.
+type androidAttestPayload struct {
+	// Token is the integrity token from IntegrityManager.requestIntegrityToken.
+	Token string `json:"token"`
 }
 
 const (
@@ -149,12 +164,48 @@ func RegisterWallet(w http.ResponseWriter, r *http.Request) {
 	credentialID := "local-dev"
 	attestationKeyID := ""
 	if attest.Enabled {
-		// TODO M2.attestation: verify platform attestation.
-		// iOS: verify Apple App Attest certificate chain (team_id, bundle_id, challenge binding, key consistency).
-		// Android: verify Play Integrity token (package_name, signing_cert_digests, verdict, challenge binding).
-		// On failure: ape.RenderErr(w, problems.BadRequest(errors.Wrap(err, "app attestation failed"))...)
-		ape.RenderErr(w, problems.BadRequest(errors.New("app attestation verification not yet implemented"))...)
-		return
+		switch challenge.Platform {
+		case "ios":
+			var p iOSAttestPayload
+			if err := json.Unmarshal(req.AppAttestation, &p); err != nil {
+				ape.RenderErr(w, problems.BadRequest(errors.Wrap(err, "decode ios attestation payload"))...)
+				return
+			}
+			if p.KeyID == "" || p.Attestation == "" {
+				ape.RenderErr(w, problems.BadRequest(errors.New("ios attestation: keyId and attestation are required"))...)
+				return
+			}
+			keyID, err := attestation.VerifyIOS(p.Attestation, p.KeyID, req.Challenge, &attest.IOS)
+			if err != nil {
+				Log(r).WithError(err).Warn("ios app attest verification failed")
+				ape.RenderErr(w, problems.BadRequest(errors.Wrap(err, "app attestation failed"))...)
+				return
+			}
+			credentialID = keyID
+			attestationKeyID = keyID
+
+		case "android":
+			var p androidAttestPayload
+			if err := json.Unmarshal(req.AppAttestation, &p); err != nil {
+				ape.RenderErr(w, problems.BadRequest(errors.Wrap(err, "decode android attestation payload"))...)
+				return
+			}
+			if p.Token == "" {
+				ape.RenderErr(w, problems.BadRequest(errors.New("android attestation: token is required"))...)
+				return
+			}
+			credID, err := attestation.VerifyAndroid(p.Token, req.Challenge, &attest.Android)
+			if err != nil {
+				Log(r).WithError(err).Warn("android play integrity verification failed")
+				ape.RenderErr(w, problems.BadRequest(errors.Wrap(err, "app attestation failed"))...)
+				return
+			}
+			credentialID = credID
+
+		default:
+			ape.RenderErr(w, problems.BadRequest(errors.Errorf("unknown platform %q for attestation", challenge.Platform))...)
+			return
+		}
 	}
 
 	db := DB(r)

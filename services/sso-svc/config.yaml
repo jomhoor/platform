@@ -47,3 +47,5 @@ app_attestation:
     signing_cert_digests: ${SSO_ANDROID_SIGNING_CERT_DIGESTS}
     # Set to false in dev to accept MEETS_BASIC_INTEGRITY from debug builds.
     require_strong_integrity: ${SSO_ANDROID_REQUIRE_STRONG_INTEGRITY}
+    # Server-side Google API key with Play Integrity API enabled.
+    google_api_key: ${SSO_ANDROID_GOOGLE_API_KEY}

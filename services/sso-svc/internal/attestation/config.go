@@ -33,6 +33,9 @@ type AndroidConfig struct {
 	// and the Play-managed app signing cert digest.
 	SigningCertDigests     string `fig:"signing_cert_digests,required"`
 	RequireStrongIntegrity bool   `fig:"require_strong_integrity"`
+	// GoogleAPIKey is a server-side API key (with Play Integrity API enabled)
+	// used to call the Google decodeIntegrityToken endpoint.
+	GoogleAPIKey string `fig:"google_api_key,required"`
 }
 
 // SigningCertDigestList returns SigningCertDigests parsed into individual entries.

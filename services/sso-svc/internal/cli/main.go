@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"os"
+
 	"github.com/alecthomas/kingpin"
 	"github.com/jomhoor/sso-svc/internal/assets"
 	"github.com/jomhoor/sso-svc/internal/config"
@@ -45,6 +47,14 @@ func Run(args []string) bool {
 
 	switch cmd {
 	case serviceCmd.FullCommand():
+		// Production guard: attestation MUST be enabled in production to prevent
+		// unauthenticated wallet registration. Set APP_ENV != "production" for
+		// local development where attestation is intentionally disabled.
+		appEnv := os.Getenv("APP_ENV")
+		if (appEnv == "production" || appEnv == "prod") && !cfg.Attestation().Enabled {
+			log.Error("app attestation must be enabled in production (set APP_ENV!=production for local dev)")
+			return false
+		}
 		service.Run(cfg)
 	case migrateUpCmd.FullCommand():
 		if err := migrateUp(cfg); err != nil {

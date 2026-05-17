@@ -172,6 +172,11 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Challenge == "" || req.WalletAddress == "" || req.WalletSignature == "" {
+		Log(r).WithFields(map[string]interface{}{
+			"challenge_empty":   req.Challenge == "",
+			"address_empty":     req.WalletAddress == "",
+			"signature_empty":   req.WalletSignature == "",
+		}).Warn("verify: missing required fields")
 		ape.RenderErr(w, problems.BadRequest(
 			errors.New("challenge, walletAddress, and walletSignature are required"))...)
 		return
@@ -187,6 +192,7 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if challenge == nil {
+		Log(r).WithField("challenge", req.Challenge).Warn("verify: challenge not found, expired, or already used")
 		ape.RenderErr(w, problems.BadRequest(
 			errors.New("challenge not found, expired, or already used"))...)
 		return
@@ -200,6 +206,7 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if wallet == nil {
+		Log(r).WithField("wallet_address", req.WalletAddress).Warn("verify: wallet not registered")
 		ape.RenderErr(w, problems.BadRequest(errors.New("wallet not registered"))...)
 		return
 	}
@@ -208,6 +215,10 @@ func Verify(w http.ResponseWriter, r *http.Request) {
 	if err := crypto.VerifyWalletSignature(
 		wallet.PublicKeyX, wallet.PublicKeyY, req.Challenge, req.WalletSignature,
 	); err != nil {
+		Log(r).WithError(err).WithFields(map[string]interface{}{
+			"wallet_address": req.WalletAddress,
+			"challenge":      req.Challenge,
+		}).Warn("verify: invalid wallet signature")
 		ape.RenderErr(w, problems.BadRequest(errors.Wrap(err, "invalid wallet signature"))...)
 		return
 	}

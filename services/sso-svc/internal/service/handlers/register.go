@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jomhoor/sso-svc/internal/crypto"
@@ -76,6 +77,11 @@ type publicKeyFields struct {
 	Y string `json:"y"`
 }
 
+const (
+	babyJubIdentityX = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	babyJubIdentityY = "0x0000000000000000000000000000000000000000000000000000000000000001"
+)
+
 // RegisterWallet stores a new wallet with a verified app credential.
 //
 // POST /v1/wallets/register
@@ -101,6 +107,13 @@ func RegisterWallet(w http.ResponseWriter, r *http.Request) {
 	if req.WalletAddress == "" || req.PublicKey.X == "" || req.PublicKey.Y == "" ||
 		req.Challenge == "" || req.WalletSignature == "" {
 		ape.RenderErr(w, problems.BadRequest(errors.New("walletAddress, publicKey.{x,y}, challenge, and walletSignature are required"))...)
+		return
+	}
+
+	// Reject BabyJubjub identity point (x=0, y=1), which corresponds to an
+	// uninitialized/empty private key path on the client.
+	if strings.EqualFold(req.PublicKey.X, babyJubIdentityX) && strings.EqualFold(req.PublicKey.Y, babyJubIdentityY) {
+		ape.RenderErr(w, problems.BadRequest(errors.New("invalid public key: identity point is not allowed"))...)
 		return
 	}
 

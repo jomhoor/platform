@@ -89,3 +89,37 @@ func (q *assertionsQ) Insert(a data.Assertion) (data.Assertion, error) {
 	}
 	return out, nil
 }
+
+// GetLatestByNullifier returns the most recent assertion carrying the given
+// nullifier_hash, regardless of status or expiry. Recovery uses this to map a
+// re-proven nullifier back to its prior wallet_id; expired or revoked rows
+// still count as evidence that the nullifier was once bound to a wallet.
+func (q *assertionsQ) GetLatestByNullifier(nullifierHash []byte) (*data.Assertion, error) {
+	if len(nullifierHash) == 0 {
+		return nil, nil
+	}
+	query, args, err := sq.
+		Select("id", "wallet_id", "assertion_type", "status", "nullifier_hash", "source", "issued_at", "expires_at").
+		From(assertionsTable).
+		Where(sq.Eq{"nullifier_hash": nullifierHash}).
+		OrderBy("issued_at DESC").
+		Limit(1).
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "build select assertion by nullifier sql")
+	}
+
+	var a data.Assertion
+	row := q.db.QueryRow(query, args...)
+	if err := row.Scan(
+		&a.ID, &a.WalletID, &a.AssertionType, &a.Status,
+		&a.NullifierHash, &a.Source, &a.IssuedAt, &a.ExpiresAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "scan assertion by nullifier")
+	}
+	return &a, nil
+}

@@ -91,6 +91,10 @@ type AssertionsQ interface {
 	Insert(a Assertion) (Assertion, error)
 	// GetByWalletAndType returns the latest assertion of the given type for a wallet.
 	GetByWalletAndType(walletID, assertionType string) (*Assertion, error)
+	// GetLatestByNullifier returns the most recent assertion (any status, any age)
+	// carrying the given nullifier_hash, or nil if none exists. Used by
+	// /v1/wallets/recover to map a re-proven nullifier back to its prior wallet.
+	GetLatestByNullifier(nullifierHash []byte) (*Assertion, error)
 }
 
 type PairwiseSubjectsQ interface {

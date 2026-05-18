@@ -44,6 +44,12 @@ func (s *service) router() chi.Router {
 		r.Post("/wallets/challenge", handlers.WalletChallenge)
 		r.Post("/wallets/register", handlers.RegisterWallet)
 
+		// Wallet recovery via ZK nullifier (M5). The wallet posts a fresh
+		// query proof carrying the same nullifier_hash as the prior wallet;
+		// sso-svc rebinds assertions + pairwise_subjects so the user keeps
+		// the same `sub` at every relying party after reinstall.
+		r.Post("/wallets/recover", handlers.RecoverWallet)
+
 		// OAuth2 auth-code + PKCE flow (M3)
 		r.Get("/authorize", handlers.Authorize)
 		r.Post("/authorize/verify", handlers.Verify)
@@ -55,6 +61,12 @@ func (s *service) router() chi.Router {
 		// ZK assertion submission (M5 item 4). Wallet posts a Rarimo query proof;
 		// success inserts an `assertions` row that /v1/tokens/validate surfaces live.
 		r.Post("/assertions/zk", handlers.SubmitZKAssertion)
+
+		// Pre-flight ZK assertion check (M5 item 1). Wallet calls this before
+		// the consent screen when an RP advertises `zk_required=true`, so the
+		// user is routed through ZK escalation instead of hitting a silent 403
+		// from /v1/authorize/verify.
+		r.Get("/wallets/{address}/assertions/zk", handlers.GetZKAssertionStatus)
 
 		// Token introspection (M3)
 		r.With(middleware.AuthMiddleware(s.jwt, s.log, jwt.AccessTokenType)).

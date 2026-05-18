@@ -11,6 +11,7 @@ import (
 	"github.com/jomhoor/sso-svc/internal/deeplink"
 	"github.com/jomhoor/sso-svc/internal/jwt"
 	"github.com/jomhoor/sso-svc/internal/pairwise"
+	"github.com/jomhoor/sso-svc/internal/zkp"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -23,6 +24,7 @@ type service struct {
 	cookies     *cookies.Cookies
 	deeplink    *deeplink.Config
 	db          *pg.DB
+	zkp         *zkp.Verifier
 }
 
 func (s *service) run() error {
@@ -41,6 +43,7 @@ func newService(cfg config.Config) *service {
 		cookies:     cfg.Cookies(),
 		deeplink:    cfg.Deeplink(),
 		db:          cfg.DB(),
+		zkp:         cfg.ZKP(),
 	}
 }
 

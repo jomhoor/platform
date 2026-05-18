@@ -7,6 +7,7 @@ import (
 	"github.com/jomhoor/sso-svc/internal/deeplink"
 	"github.com/jomhoor/sso-svc/internal/jwt"
 	"github.com/jomhoor/sso-svc/internal/pairwise"
+	"github.com/jomhoor/sso-svc/internal/zkp"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
 )
@@ -20,6 +21,7 @@ type Config interface {
 	cookies.Cookier
 	deeplink.Deeplinker
 	pg.DBer
+	zkp.Zkper
 }
 
 type config struct {
@@ -31,6 +33,7 @@ type config struct {
 	cookies.Cookier
 	deeplink.Deeplinker
 	pg.DBer
+	zkp.Zkper
 	getter kv.Getter
 }
 
@@ -45,5 +48,6 @@ func New(getter kv.Getter) Config {
 		Cookier:       cookies.NewCookier(getter),
 		Deeplinker:    deeplink.NewDeeplinker(getter),
 		DBer:          pg.NewDBer(getter),
+		Zkper:         zkp.NewZkper(getter),
 	}
 }

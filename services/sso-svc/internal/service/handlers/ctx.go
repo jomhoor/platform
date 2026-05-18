@@ -10,6 +10,7 @@ import (
 	"github.com/jomhoor/sso-svc/internal/deeplink"
 	"github.com/jomhoor/sso-svc/internal/jwt"
 	"github.com/jomhoor/sso-svc/internal/pairwise"
+	"github.com/jomhoor/sso-svc/internal/zkp"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -24,6 +25,7 @@ const (
 	cookiesCtxKey
 	deeplinkCtxKey
 	dbCtxKey
+	zkpCtxKey
 )
 
 // ── Setters ───────────────────────────────────────────────────────────────────
@@ -76,6 +78,12 @@ func CtxDB(db *pg.DB) func(context.Context) context.Context {
 	}
 }
 
+func CtxZKP(v *zkp.Verifier) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, zkpCtxKey, v)
+	}
+}
+
 // ── Getters ───────────────────────────────────────────────────────────────────
 
 func Log(r *http.Request) *logan.Entry {
@@ -108,4 +116,8 @@ func Deeplink(r *http.Request) *deeplink.Config {
 
 func DB(r *http.Request) *pg.DB {
 	return r.Context().Value(dbCtxKey).(*pg.DB)
+}
+
+func ZKP(r *http.Request) *zkp.Verifier {
+	return r.Context().Value(zkpCtxKey).(*zkp.Verifier)
 }

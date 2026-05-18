@@ -22,6 +22,7 @@ func (s *service) router() chi.Router {
 			handlers.CtxCookies(s.cookies),
 			handlers.CtxDeeplink(s.deeplink),
 			handlers.CtxDB(s.db),
+			handlers.CtxZKP(s.zkp),
 		),
 	)
 
@@ -50,6 +51,10 @@ func (s *service) router() chi.Router {
 
 		// Public client metadata for consent screen (M4)
 		r.Get("/clients/{id}", handlers.GetClient)
+
+		// ZK assertion submission (M5 item 4). Wallet posts a Rarimo query proof;
+		// success inserts an `assertions` row that /v1/tokens/validate surfaces live.
+		r.Post("/assertions/zk", handlers.SubmitZKAssertion)
 
 		// Token introspection (M3)
 		r.With(middleware.AuthMiddleware(s.jwt, s.log, jwt.AccessTokenType)).

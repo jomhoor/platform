@@ -5,9 +5,12 @@ go 1.22
 require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/alecthomas/kingpin v2.2.6+incompatible
+	github.com/fxamacker/cbor/v2 v2.7.0
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/iden3/go-iden3-crypto v0.0.17
+	github.com/iden3/go-rapidsnark/types v0.0.3
+	github.com/iden3/go-rapidsnark/verifier v0.0.5
 	github.com/lib/pq v1.10.9
 	github.com/pkg/errors v0.9.1
 	github.com/rubenv/sql-migrate v1.6.1
@@ -15,6 +18,7 @@ require (
 	gitlab.com/distributed_lab/figure v2.1.0+incompatible
 	gitlab.com/distributed_lab/kit v1.11.2
 	gitlab.com/distributed_lab/logan v3.8.1+incompatible
+	golang.org/x/crypto v0.17.0
 )
 
 require (
@@ -23,7 +27,6 @@ require (
 	github.com/certifi/gocertifi v0.0.0-20200211180108-c7c1fbc02894 // indirect
 	github.com/dchest/blake512 v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.7 // indirect
-	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/getsentry/raven-go v0.2.0 // indirect
 	github.com/getsentry/sentry-go v0.7.0 // indirect
 	github.com/go-gorp/gorp/v3 v3.1.0 // indirect
@@ -45,7 +48,6 @@ require (
 	github.com/spf13/viper v1.3.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	gitlab.com/distributed_lab/lorem v0.2.0 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

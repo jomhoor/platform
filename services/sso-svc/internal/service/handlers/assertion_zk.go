@@ -4,7 +4,8 @@
 // (queryIdentity / queryIdentity_inid_ca / future variants) with
 // `event_id = sso_event_id`. The wallet sends a stable `circuit_id` string
 // (e.g. "passport_rsa_2048_sha256_e65537", "inid_rsa_2048") identifying
-// which circuit it used; sso-svc looks up the matching VK in its registry.
+// which circuit it used; sso-svc looks up the matching on-chain verifier
+// contract address in its registry and eth_calls verify(bytes,bytes32[]).
 //
 // On success an `assertions` row is inserted with assertion_type="zk_verified"
 // (uniform across all circuits — RPs see only the boolean), status=true,
@@ -17,7 +18,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/jomhoor/sso-svc/internal/data"
 	"github.com/jomhoor/sso-svc/internal/zkp"
 	"github.com/pkg/errors"
@@ -26,9 +26,16 @@ import (
 )
 
 type submitZKAssertionRequest struct {
-	WalletAddress string            `json:"walletAddress"`
-	CircuitID     string            `json:"circuit_id"`
-	Proof         *zkptypes.ZKProof `json:"proof"`
+	WalletAddress string   `json:"walletAddress"`
+	CircuitID     string   `json:"circuit_id"`
+	// Proof is the raw `bytes` payload the on-chain verifier expects (hex
+	// encoded, with or without the `0x` prefix). For Noir/UltraPlonk this is
+	// the verifier proof blob; for Circom/Groth16 the wallet ABI-encodes
+	// (a, b, c) into the same `bytes` shape the deployed verifier accepts.
+	Proof string `json:"proof"`
+	// PubSignals are the circuit's public inputs, one element per circuit
+	// signal, decimal or hex encoded.
+	PubSignals []string `json:"pub_signals"`
 }
 
 // SubmitZKAssertion handles POST /v1/assertions/zk.
@@ -45,8 +52,8 @@ func SubmitZKAssertion(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.BadRequest(errors.Wrap(err, "decode body"))...)
 		return
 	}
-	if req.WalletAddress == "" || req.CircuitID == "" || req.Proof == nil {
-		ape.RenderErr(w, problems.BadRequest(errors.New("walletAddress, circuit_id and proof required"))...)
+	if req.WalletAddress == "" || req.CircuitID == "" || req.Proof == "" || len(req.PubSignals) == 0 {
+		ape.RenderErr(w, problems.BadRequest(errors.New("walletAddress, circuit_id, proof and pub_signals required"))...)
 		return
 	}
 	if !v.SupportsCircuit(req.CircuitID) {
@@ -68,7 +75,7 @@ func SubmitZKAssertion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := v.VerifyAssertion(r.Context(), req.CircuitID, req.Proof)
+	res, err := v.VerifyAssertion(r.Context(), req.CircuitID, req.Proof, req.PubSignals)
 	if err != nil {
 		if errors.Is(err, zkp.ErrUnknownCircuit) {
 			ape.RenderErr(w, problems.BadRequest(err)...)

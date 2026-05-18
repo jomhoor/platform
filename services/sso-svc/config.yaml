@@ -34,15 +34,19 @@ deeplink:
 #
 # Multi-circuit registry: wallet sends `circuit_id` with each proof. Adding a
 # new variant (e.g. a new Iranian passport generation, German ECDSA, …) is a
-# config-only change — drop the VK file in and add an entry below. All circuits
-# share the same global event_id and RegistrationSMT root (one identity graph).
+# config-only change — drop the deployed verifier contract address in below.
+# All circuits share the same global event_id and RegistrationSMT root (one
+# identity graph). Verification itself is done on-chain via eth_call to each
+# circuit's `verify(bytes,bytes32[])` — proving-system agnostic.
 zkp:
   enabled: ${SSO_ZKP_ENABLED}
   # Decimal-string field element. Wallet MUST use this as the circuit event_id.
   event_id: ${SSO_ZKP_EVENT_ID}
   # How long an inserted `zk_verified` assertion remains live.
   assertion_ttl: 720h
-  # On-chain RegistrationSMT root binding (skipped when blank — dev only).
+  # On-chain RPC and RegistrationSMT root binding. rpc_url is required when
+  # zkp is enabled (used for both the verifier eth_call and SMT-root check);
+  # registration_smt_address is optional (skipped when blank — dev only).
   rpc_url: ${SSO_ZKP_RPC_URL}
   registration_smt_address: ${SSO_ZKP_REGISTRATION_SMT}
   # Circuit registry. Keys are stable `circuit_id` strings the wallet emits.
@@ -51,25 +55,29 @@ zkp:
   # (e.g. INID's queryIdentity_inid_ca has 23 signals, not 24).
   circuits:
     # Most international biometric passports (incl. modern Iranian, US, FR, …).
+    # TODO: deploy a Groth16 verifier contract for queryIdentity and set this.
     passport_rsa_2048_sha256_e65537:
-      verification_key_path: ${SSO_ZKP_VK_PASSPORT_RSA2048_SHA256}
+      verifier_address: ${SSO_ZKP_VERIFIER_PASSPORT_RSA2048_SHA256}
       nullifier_index: 0
       event_id_index: 9
       smt_root_index: 8
-    # Iranian National ID card (queryIdentity_inid_ca, 23 pub signals).
+    # Iranian National ID card (queryIdentity_inid_ca, UltraPlonk Noir).
+    # Defaults to our sovereign NoirTD1Verifier deployed on Rarimo L2 mainnet
+    # at 0x5f9D7d7Fc6D498eA48d57D7591e118eA2cF0f0be — same contract voting uses.
     inid_rsa_2048:
-      verification_key_path: ${SSO_ZKP_VK_INID_RSA2048}
+      verifier_address: ${SSO_ZKP_VERIFIER_INID_RSA2048}
       nullifier_index: 0
       event_id_index: 9
       smt_root_index: 8
     # Iranian passport Variant A (RSA-2048 SHA-1 E58333, Rarimo Type 6).
+    # TODO: deploy a Groth16 verifier contract for this variant.
     passport_rsa_2048_sha1_e58333:
-      verification_key_path: ${SSO_ZKP_VK_PASSPORT_RSA2048_SHA1_E58333}
+      verifier_address: ${SSO_ZKP_VERIFIER_PASSPORT_RSA2048_SHA1_E58333}
       nullifier_index: 0
       event_id_index: 9
       smt_root_index: 8
-    # Add new variants here as VKs become available (Variant-B E33259,
-    # German ECDSA brainpoolP384r1, …).
+    # Add new variants here as verifier contracts are deployed (Variant-B
+    # E33259, German ECDSA brainpoolP384r1, …).
 
 app_attestation:
   enabled: true

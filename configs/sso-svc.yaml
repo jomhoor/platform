@@ -48,3 +48,12 @@ app_attestation:
     package_name: "org.jomhoor.app"
     signing_cert_digests: "local-dev-placeholder"
     require_strong_integrity: false
+    google_api_key: "local-dev-placeholder"
+
+zkp:
+  enabled: false
+  event_id: "1"
+  assertion_ttl: 720h
+  rpc_url: ""
+  registration_smt_address: ""
+  circuits: {}

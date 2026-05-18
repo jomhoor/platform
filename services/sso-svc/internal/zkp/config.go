@@ -2,14 +2,21 @@
 //
 // Design (see docs/SSO/plan.txt M5 item 4):
 //
-//   - Wallet runs the existing Rarimo `queryIdentity` (passport) or
-//     `queryIdentity_inid_ca` (INID) circuit with `event_id = sso_event_id`
-//     and a selector that reveals at minimum the nullifier.
+//   - Wallet runs the existing Rarimo `queryIdentity` (Circom/Groth16 passport)
+//     or `queryIdentity_inid_ca` (Noir/UltraPlonk INID) circuit with
+//     `event_id = sso_event_id` and a selector that reveals at minimum the
+//     nullifier.
 //
-//   - sso-svc verifies the Groth16 proof against a per-circuit pinned VK,
-//     pins event_id (global), optionally validates `registration_smt_root`
-//     against the on-chain RegistrationSMT via Rarimo L2 RPC (isRootValid),
-//     and inserts an assertion row with nullifier_hash = pub_signals[idx].
+//   - sso-svc verifies each proof by calling the circuit's on-chain verifier
+//     contract via JSON-RPC eth_call. This keeps verification proving-system
+//     agnostic (UltraPlonk, Groth16, …) and reuses our already-deployed
+//     sovereign verifier contracts (e.g. NoirTD1Verifier) as the single
+//     source of truth — the same contract code that voting trusts.
+//
+//   - sso-svc additionally pins event_id (global), optionally validates
+//     `registration_smt_root` against the on-chain RegistrationSMT
+//     (isRootValid), and inserts an assertion row with
+//     nullifier_hash = pub_signals[idx].
 //
 //   - Nullifiers are NOT stored on the registration contract. "Registered" is
 //     proven implicitly by the Merkle inclusion check inside the circuit; the
@@ -20,8 +27,8 @@
 //   The wallet identifies its document class on scan (Variant-A passport,
 //   Variant-B passport, INID, German ECDSA, …) and sends a stable
 //   `circuit_id` string with the proof. Each entry in `Circuits` carries its
-//   own VK path and pub-signal index layout. Adding a new variant = drop a
-//   VK file in and add a config entry; zero code change.
+//   own on-chain verifier address and pub-signal index layout. Adding a new
+//   variant = drop a deployed verifier address into config; zero code change.
 //
 // Privacy invariants (M2.5):
 //
@@ -32,8 +39,6 @@
 package zkp
 
 import (
-	"os"
-
 	"github.com/pkg/errors"
 	"gitlab.com/distributed_lab/figure"
 	"gitlab.com/distributed_lab/kit/comfig"
@@ -43,9 +48,11 @@ import (
 // CircuitConfig describes one verifiable circuit class (e.g. Iranian Variant-A
 // passport, Iranian INID, German ECDSA passport, …).
 type CircuitConfig struct {
-	// VerificationKeyPath points to the snarkjs-format Groth16 VK (JSON) for
-	// this specific circuit. Loaded once at startup.
-	VerificationKeyPath string `fig:"verification_key_path,required"`
+	// VerifierAddress is the on-chain verifier contract for this circuit
+	// (e.g. our deployed NoirTD1Verifier). sso-svc calls verify(bytes,bytes32[])
+	// via eth_call to validate each proof. The wallet uses the same proving
+	// system the contract expects (UltraPlonk for Noir, Groth16 for Circom).
+	VerifierAddress string `fig:"verifier_address,required"`
 
 	// Pub-signal indices for this circuit. Defaults match Rarimo queryIdentity
 	// (passport) layout; INID uses a different layout (23 signals vs 24).
@@ -69,9 +76,10 @@ type Config struct {
 	// `/v1/tokens/validate` stops reporting `zk_verified=true`.
 	AssertionTTL string `fig:"assertion_ttl,required"`
 
-	// RegistrationSMT on-chain root check. Optional in dev — when RPCURL is
-	// empty the verifier skips the root check and logs a warning. Same
-	// RegistrationSMT for all circuits (one identity graph).
+	// RegistrationSMT on-chain root check. Optional in dev — when
+	// RegistrationSMTAddr is empty the verifier skips the root check.
+	// Required in production. Same RegistrationSMT for all circuits (one
+	// identity graph).
 	RPCURL              string `fig:"rpc_url"`
 	RegistrationSMTAddr string `fig:"registration_smt_address"`
 
@@ -80,16 +88,6 @@ type Config struct {
 	// without a corresponding wallet circuit detector are ignored at runtime;
 	// missing-from-config circuit_ids on requests yield 400.
 	Circuits map[string]CircuitConfig `fig:"circuits"`
-}
-
-// LoadVerificationKey reads the VK file for a given circuit config. Exposed
-// so callers can surface load errors at startup.
-func (c *CircuitConfig) LoadVerificationKey() ([]byte, error) {
-	b, err := os.ReadFile(c.VerificationKeyPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "read verification key file")
-	}
-	return b, nil
 }
 
 // Zkper is composed into the service Config and exposes the verifier.
@@ -108,8 +106,18 @@ func NewZkper(getter kv.Getter) Zkper {
 
 func (z *zkper) ZKP() *Verifier {
 	return z.once.Do(func() interface{} {
+		raw := kv.MustGetStringMap(z.getter, "zkp")
+		// Fast-path: zkp disabled (local dev). The "circuits" map type has no
+		// figure hook registered, so even parsing an empty map would fail. Short-circuit.
+		if enabled, _ := raw["enabled"].(bool); !enabled {
+			v, err := NewVerifier(Config{Enabled: false})
+			if err != nil {
+				panic(errors.WithMessage(err, "failed to construct disabled zkp verifier"))
+			}
+			return v
+		}
 		cfg := Config{}
-		if err := figure.Out(&cfg).From(kv.MustGetStringMap(z.getter, "zkp")).Please(); err != nil {
+		if err := figure.Out(&cfg).From(raw).Please(); err != nil {
 			panic(errors.WithMessage(err, "failed to figure out zkp config"))
 		}
 		v, err := NewVerifier(cfg)

@@ -11,6 +11,9 @@ npm-debug.log*
 services/passport-contracts/scripts
 services/passport-voting-contracts/scripts
 scripts/
+# Exception: sso-svc scripts/ holds permanent smoke runners (fake-wallet.js)
+!services/sso-svc/scripts/
+!services/sso-svc/scripts/**
 artifacts/
 generated-types/
 

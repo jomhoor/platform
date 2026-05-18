@@ -166,7 +166,7 @@ func safePrefix(s string) string {
 // Validate handles GET /v1/tokens/validate?token=<jwt>
 // Token introspection for clients that prefer server-side verification over local JWKS.
 //
-// Response: { valid, subject, client_id, assertions: { zk_verified } }
+// Response: { valid, subject, client_id, assertions: [{assertion_type, status, source}, ...] }
 //
 // Note: subject is always the pairwiseSubject — never walletAddress.
 //
@@ -176,28 +176,32 @@ func Validate(w http.ResponseWriter, r *http.Request) {
 	// AuthMiddleware has already validated the JWT and stored the claim in context.
 	claim := Claim(r)
 
-	// Live zk_verified refresh: pairwise subject → wallet ID → assertion.
-	zkVerified := false
+	// Live trust-refresh: pairwise subject → wallet ID → assertions.
+	// Response shape is documented in docs/SSO/INTEGRATION.md as an array of
+	// {assertion_type, status, source} objects.
+	assertions := []map[string]any{}
 	ps, err := DB(r).PairwiseSubjects().GetBySubject(claim.Subject)
 	if err != nil {
 		Log(r).WithError(err).Warn("validate: lookup pairwise subject")
-		// Non-fatal — default to false; validate is the authoritative source, not the token.
+		// Non-fatal — default to empty; validate is the authoritative source, not the token.
 	} else if ps != nil {
 		assertion, err := DB(r).Assertions().GetByWalletAndType(ps.WalletID, "zk_verified")
 		if err != nil {
 			Log(r).WithError(err).Warn("validate: lookup zk_verified assertion")
-		} else {
-			zkVerified = assertion != nil
+		} else if assertion != nil {
+			assertions = append(assertions, map[string]any{
+				"assertion_type": assertion.AssertionType,
+				"status":         "active",
+				"source":         assertion.Source,
+			})
 		}
 	}
 
 	resp := map[string]any{
-		"valid":     true,
-		"subject":   claim.Subject,
-		"client_id": claim.ClientID,
-		"assertions": map[string]any{
-			"zk_verified": zkVerified,
-		},
+		"valid":      true,
+		"subject":    claim.Subject,
+		"client_id":  claim.ClientID,
+		"assertions": assertions,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {

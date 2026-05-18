@@ -14,7 +14,8 @@ This directory contains all backend services, smart contracts, deployment config
 ```
 Mobile App ──► nginx gateway (:8000)
                   ├── /integrations/registration-relayer/*  → Identity registration
-                  └── /integrations/proof-verification-relayer/*  → Voting
+                  ├── /integrations/proof-verification-relayer/*  → Voting
+                  └── sso.jomhoor.org  → sso-svc  ("Sign in with Jomhoor")
                                           │
                               ┌────────────┴────────────┐
                               ▼                         ▼
@@ -29,7 +30,8 @@ platform/
 ├── configs/                          # Service configuration files
 │   ├── nginx.conf                    # API gateway routing
 │   ├── registration-relayer*.yaml    # Identity registration config (local/testnet/prod)
-│   └── proof-verification-relayer*.yaml  # Voting config (local/testnet/prod)
+│   ├── proof-verification-relayer*.yaml  # Voting config (local/testnet/prod)
+│   └── sso-svc*.yaml                 # "Sign in with Jomhoor" config (env placeholders only)
 ├── deploy/                           # Production deployment
 │   ├── deploy.sh                     # Deploy script (start/stop/update/logs)
 │   ├── docker-compose.production.yaml
@@ -47,6 +49,7 @@ platform/
 │   ├── passport-voting-contracts/    # Voting smart contracts (NoirIDVoting, IDCardVoting)
 │   ├── registration-relayer/         # Go service — submits registration txs to Rarimo L2
 │   ├── proof-verification-relayer/   # Go service — submits vote txs (feat/noir-voting branch)
+│   ├── sso-svc/                      # Go service — "Sign in with Jomhoor" OAuth2 + PKCE
 │   ├── passport-zk-circuits/         # ZK circuits (Circom/Noir) for identity proofs
 │   ├── passport-identity-provider/   # Identity provider service (Rarimo reference)
 │   ├── verificator-svc/              # ZK proof verification service (Rarimo reference)
@@ -111,10 +114,11 @@ cd services/passport-contracts && node scripts/verify-local-setup.js
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| **nginx** | 8000 | API gateway — routes to relayers |
+| **nginx** | 8000 | API gateway — routes to relayers and sso-svc |
 | **registration-relayer** | 8001 | Submits identity registration transactions to Rarimo L2 |
 | **proof-verification-relayer** | 8002 | Submits vote transactions to Rarimo L2 |
-| **postgres** | 5432 | Database for proof-verification-relayer (proposal tracking, gas budgets) |
+| **sso-svc** | 8003 | "Sign in with Jomhoor" — wallet-based OAuth2 + PKCE with mandatory app attestation |
+| **postgres** | 5432 | Database for proof-verification-relayer and sso-svc |
 
 ### Smart Contracts
 
@@ -145,6 +149,93 @@ Config files live in `configs/`. Each service has up to three variants:
 
 **Required config:** Both relayers need a `private_key` for a wallet funded with RMO tokens.
 
+**Secrets policy:** `config.yaml` files must reference environment variables only — never commit literal values for `private_key`, `jwt.secret_key`, `pairwise.secret_key`, `db.url` passwords, or per-client `client_secret`s. Local development uses gitignored `.env` files; staging and production inject env vars from the deployment vault under `/opt/iranians-vote/`.
+
+---
+
+## SSO (Sign in with Jomhoor)
+
+`sso-svc` issues OAuth2 auth-code + PKCE tokens to relying parties (Taraaz, Compass, DIFCongress, …) on behalf of wallets registered with the Jomhoor mobile app. App attestation (App Attest on iOS, Play Integrity on Android) is a **hard gate** at wallet registration in production. Relying parties never see the root wallet identifier — only a per-client pairwise subject.
+
+**Canonical specification:** [`../docs/SSO/plan.txt`](../docs/SSO/plan.txt). Mobile-app surface: [`../jomhoor-wallet/README.md`](../jomhoor-wallet/README.md#jomhoor-sso).
+
+### Public HTTP surface (served at `https://sso.jomhoor.org` in production)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET    | `/.well-known/apple-app-site-association` | iOS Universal Links |
+| GET    | `/.well-known/assetlinks.json`            | Android App Links |
+| GET    | `/auth/sso`                               | Universal-Link fallback page |
+| POST   | `/v1/wallets/challenge`                   | Issue registration nonce |
+| POST   | `/v1/wallets/register`                    | Bind wallet (BabyJubjub `{x,y}`) + verified app credential |
+| GET    | `/v1/authorize`                           | OAuth2 authorize entry (stores `code_challenge`, redirects to wallet) |
+| POST   | `/v1/authorize/verify`                    | Wallet posts signed challenge + assertion → one-time `code` |
+| POST   | `/v1/tokens/exchange`                     | RP exchanges `code` + `code_verifier` → access + refresh JWT |
+| GET    | `/v1/tokens/validate`                     | Introspection — live assertion lookup |
+| GET    | `/v1/clients/{id}`                        | Public client metadata (name, logo, redirect URIs, `zk_required`) |
+| POST   | `/v1/assertions/zk`                       | Wallet submits a Rarimo `queryIdentity` Groth16 proof → inserts a `zk_verified` assertion |
+
+`client_secret` values are never returned by any endpoint.
+
+### Invariants the backend enforces
+
+- JWT `sub` is always the per-client **pairwise subject**, never `walletAddress` or the wallet public key.
+- JWT carries no assertion data. `zk_verified` is fetched live from the `assertions` table inside `/v1/tokens/validate`.
+- App attestation is mandatory in production. The service refuses to start when `KIT_ENV=production` and `attestation.enabled=false`.
+- `client_secret` is stored bcrypt-hashed in `sso_clients`. Plain-text seeds are rejected.
+- Only `sso.jomhoor.org` is listed in AASA / `assetlinks.json` — single trust anchor host.
+- `assertion_type` stays `"zk_verified"` uniformly across all circuits. The wallet's `circuit_id` is captured only in `assertions.source` for audit — RPs see only the boolean via `/v1/tokens/validate`, no document class leakage.
+
+### ZK assertion verification (multi-circuit)
+
+`POST /v1/assertions/zk` accepts a stable `circuit_id` string with every proof so the wallet can submit proofs from different document classes (Iranian passport variants, INID, future ECDSA passports) without backend code changes. Each entry in `config.yaml#zkp.circuits` carries its own verification-key path and public-signal layout. Adding a new variant = drop a snarkjs VK JSON file in and add an entry; zero code change.
+
+Initial registry (`configs/sso-svc.yaml`):
+
+| `circuit_id` | Document class |
+|--------------|----------------|
+| `passport_rsa_2048_sha256_e65537` | Most international biometric passports (modern Iranian, US, FR, …) |
+| `passport_rsa_2048_sha1_e58333`   | Iranian passport Variant A (Type 6) |
+| `inid_rsa_2048`                   | Iranian National ID card (`queryIdentity_inid_ca`) |
+
+The verifier (`internal/zkp`) pre-loads all VKs at startup, pins the global `event_id` against `pub_signals[event_id_index]`, optionally validates `pub_signals[smt_root_index]` against `RegistrationSMT.isRootValid(bytes32)` via Rarimo L2 JSON-RPC (`eth_call`, selector `0x71f6a410`), verifies the Groth16 proof against the per-circuit pinned VK, then writes the nullifier (raw 32-byte big-endian) into `assertions.nullifier_hash`. Unknown `circuit_id` → 400.
+
+### Database tables (created by sso-svc migrations)
+
+| Table | Purpose |
+|-------|---------|
+| `wallets`            | Root wallet identifier + BabyJubjub public key coordinates |
+| `app_credentials`    | App Attest / Play Integrity verification result bound to wallet |
+| `assertions`         | `(wallet_id, assertion_type, status, nullifier_hash, source, issued_at, expires_at)` — live trust source |
+| `pairwise_subjects`  | Per-(wallet, client) derived subject — stable, unique |
+| `sso_clients`        | Client registry: redirect URIs, bcrypt `client_secret`, `zk_required`, name, logo URL |
+| `sso_challenges`     | `/v1/authorize` nonces + stored `code_challenge` |
+| `sso_auth_codes`     | One-time codes (no assertion columns; trust is fetched live) |
+
+### Configuration
+
+Config file: `configs/sso-svc.yaml` (env placeholders only). Required env vars at runtime:
+
+- `SSO_DB_URL` — PostgreSQL connection string
+- `SSO_JWT_SECRET` — access/refresh token signing key
+- `SSO_PAIRWISE_SECRET` — HMAC key for pairwise subject derivation (rotating this re-keys every relying party — treat as one-way)
+- iOS App Attest: team ID, bundle ID, environment
+- Android Play Integrity: package name, signing-cert digest allow-list
+
+### Initial relying parties
+
+| Client | `zk_required` | Status |
+|--------|---------------|--------|
+| Taraaz (Agora fork, branch `feat/sso-jomhoor-login`) | false | Live in production |
+| Compass (Civic-Compass) | false | Integration planned |
+| DIFCongress | true (for ZK-participant role) | Integration test pending |
+
+## Roadmap — Sovereign Identity Stack on Rarimo L2 (M6)
+
+> **Important — we are NOT leaving Rarimo L2.** Chain id stays `7368`, gas token stays RMO, block explorer stays `scan.rarimo.com`, and we keep using Rarimo's open-source `passport-zk-circuits` family. M6 replaces only the **identity-registry contracts** (and their governance) — not the chain they run on.
+
+Identity contracts on mainnet (Registration2 / StateKeeper / RegistrationSMT / CertificatesSMT / dispatchers) are currently Rarimo-deployed and Rarimo-governed. The next milestone (`feat/sovereign-l2`) deploys **our own copies** of those contracts on Rarimo L2 (chain 7368) seeded with the extended ICAO tree from `jomhoor-wallet/assets/certificates/master_000316.pem` (857 CSCAs incl. German). This unblocks Iranian passport Variant B (RSA-3072 SHA-1 E33259, currently blocked by a missing dispatcher and an upstream `keyByteLength` bug — see `docs/rarimo-dispatcher-bug-report.md`) and removes the Rarimo governance dependency that contradicts Jomhoor's sovereign-civic-infrastructure mission. FreedomTool interop is lost intentionally — we own the identity graph end-to-end. ICAO root admin starts as a single EOA during the test phase and migrates to a Gnosis Safe multisig before public launch. See [`../docs/SSO/plan.txt`](../docs/SSO/plan.txt) §M6 for the full scope.
+
 ## Contract Addresses
 
 ### Mainnet (Chain ID: 7368)
@@ -174,7 +265,7 @@ Auto-generated after deployment — see `.local-addresses.json`.
 
 ## Production Deployment
 
-Server: `api.iranians.vote` (173.212.214.147)
+Server: `api.iranians.vote` (relayers) and `sso.jomhoor.org` (sso-svc).
 
 ```bash
 ssh iranians-vote-vps
@@ -184,6 +275,13 @@ cd /opt/iranians-vote/repo/platform/deploy
 ./deploy.sh update    # Pull latest + restart
 ./deploy.sh logs      # View all logs
 ```
+
+SSO production notes:
+
+- nginx vhost: `deploy/nginx-vhosts/sso-jomhoor-org.conf` (TLS via Let's Encrypt, HSTS, `proxy_pass` to `sso-svc:8000`)
+- `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` MUST be served from `sso.jomhoor.org` root
+- Secrets injected from env files under `/opt/iranians-vote/` — never committed
+- Production guard refuses to start sso-svc if `attestation.enabled=false`
 
 See [deploy/README.md](deploy/README.md) for full deployment documentation.
 

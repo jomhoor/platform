@@ -75,7 +75,7 @@ func SubmitZKAssertion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := v.VerifyAssertion(r.Context(), req.CircuitID, req.Proof, req.PubSignals)
+	res, err := v.VerifyAssertion(r.Context(), req.CircuitID, req.Proof, req.PubSignals, req.WalletAddress)
 	if err != nil {
 		if errors.Is(err, zkp.ErrUnknownCircuit) {
 			ape.RenderErr(w, problems.BadRequest(err)...)

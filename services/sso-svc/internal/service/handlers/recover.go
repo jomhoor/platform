@@ -118,7 +118,7 @@ func RecoverWallet(w http.ResponseWriter, r *http.Request) {
 	//    verifier checks: event_id pin, registration_smt_root valid on-chain,
 	//    and the proof verifies against the circuit's on-chain verifier
 	//    contract via eth_call.
-	res, err := v.VerifyAssertion(r.Context(), req.CircuitID, req.Proof, req.PubSignals)
+	res, err := v.VerifyAssertion(r.Context(), req.CircuitID, req.Proof, req.PubSignals, req.WalletAddress)
 	if err != nil {
 		if errors.Is(err, zkp.ErrUnknownCircuit) {
 			ape.RenderErr(w, problems.BadRequest(err)...)

@@ -113,14 +113,20 @@ func (v *Verifier) SupportsCircuit(circuitID string) bool {
 //  1. circuit_id is in the registry.
 //  2. pub_signals length matches the configured index layout.
 //  3. pub_signals[event_id_index] equals the configured global event_id.
-//  4. Optionally: pub_signals[smt_root_index] is a recent valid root in the
+//  4. pub_signals[event_data_index] equals the caller's walletAddress when
+//     event_data_index is configured for this circuit. This binds the proof
+//     to the new wallet so a captured proof cannot be replayed against a
+//     different wallet at /v1/wallets/recover or /v1/assertions/zk.
+//  5. Optionally: pub_signals[smt_root_index] is a recent valid root in the
 //     on-chain RegistrationSMT (skipped when RegistrationSMTAddr is empty).
-//  5. The proof verifies on-chain via verify(bytes,bytes32[]) eth_call.
-//  6. Extract nullifier from pub_signals[nullifier_index].
+//  6. The proof verifies on-chain via verify(bytes,bytes32[]) eth_call.
+//  7. Extract nullifier from pub_signals[nullifier_index].
 //
 // pubSignals accepts decimal ("123…") or hex ("0xabc…" / "abc…") encodings.
 // proofHex is the raw `bytes` payload the verifier contract expects.
-func (v *Verifier) VerifyAssertion(ctx context.Context, circuitID, proofHex string, pubSignals []string) (*Result, error) {
+// walletAddress is the new wallet's address (0x-prefixed BN254 field element);
+// required when the circuit has event_data_index configured.
+func (v *Verifier) VerifyAssertion(ctx context.Context, circuitID, proofHex string, pubSignals []string, walletAddress string) (*Result, error) {
 	if !v.cfg.Enabled {
 		return nil, errors.New("zkp verifier disabled")
 	}
@@ -133,7 +139,7 @@ func (v *Verifier) VerifyAssertion(ctx context.Context, circuitID, proofHex stri
 		return nil, errors.Wrapf(ErrUnknownCircuit, "circuit_id %q", circuitID)
 	}
 
-	if len(pubSignals) <= maxIndex(cc.NullifierIndex, cc.EventIDIndex, cc.SMTRootIndex) {
+	if len(pubSignals) <= maxIndex(cc.NullifierIndex, cc.EventIDIndex, cc.SMTRootIndex, cc.EventDataIndex) {
 		return nil, errors.Errorf("pub_signals too short: got %d", len(pubSignals))
 	}
 
@@ -156,6 +162,25 @@ func (v *Verifier) VerifyAssertion(ctx context.Context, circuitID, proofHex stri
 	if pubInts[cc.EventIDIndex].Cmp(expectedEventID) != 0 {
 		return nil, errors.Errorf("event_id mismatch: expected %s, got %s",
 			expectedEventID.String(), pubInts[cc.EventIDIndex].String())
+	}
+
+	// 1b. Wallet-address binding via event_data. The wallet writes its own
+	//     address into the circuit's `event_data` input; we recompute it here
+	//     and reject the proof if it doesn't match. This is the only
+	//     line of defence against proof-replay on a different wallet — the
+	//     proof itself is publicly verifiable and otherwise carries no
+	//     identity-of-submitter binding.
+	if cc.EventDataIndex > 0 {
+		if strings.TrimSpace(walletAddress) == "" {
+			return nil, errors.New("walletAddress required for event_data binding")
+		}
+		expectedEventData, err := parseFieldElement(walletAddress)
+		if err != nil {
+			return nil, errors.Wrap(err, "parse walletAddress as field element")
+		}
+		if pubInts[cc.EventDataIndex].Cmp(expectedEventData) != 0 {
+			return nil, errors.Errorf("event_data mismatch: proof is not bound to walletAddress %s", walletAddress)
+		}
 	}
 
 	// 2. Optional on-chain SMT-root binding.

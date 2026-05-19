@@ -59,6 +59,16 @@ type CircuitConfig struct {
 	NullifierIndex int `fig:"nullifier_index"`
 	EventIDIndex   int `fig:"event_id_index"`
 	SMTRootIndex   int `fig:"smt_root_index"`
+
+	// EventDataIndex is the pub_signals index that carries the wallet address
+	// the proof is bound to. When > 0, sso-svc requires
+	// pub_signals[EventDataIndex] == walletAddress (mod BN254 field). The
+	// wallet writes its own address into the circuit's `event_data` input, so
+	// a captured proof cannot be replayed against a different wallet at
+	// /v1/wallets/recover or /v1/assertions/zk. Set to 0 (unset) for legacy
+	// circuits whose verifier registry entry predates this binding; new
+	// circuits SHOULD set it.
+	EventDataIndex int `fig:"event_data_index"`
 }
 
 // Config holds the sso-svc query-proof verification settings.

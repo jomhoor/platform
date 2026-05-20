@@ -22,11 +22,11 @@ import (
 // Intentionally narrow: no client_secret, no internal IDs beyond the client_id
 // the caller already knows.
 type clientMetadataResponse struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	LogoURL      string   `json:"logo_url,omitempty"`
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	LogoURL      *string `json:"logo_url,omitempty"`
 	RedirectURIs []string `json:"redirect_uris"`
-	ZKRequired   bool     `json:"zk_required"`
+	ZKRequired   bool    `json:"zk_required"`
 }
 
 // GetClient handles GET /v1/clients/{id}.

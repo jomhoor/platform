@@ -49,7 +49,7 @@ type PairwiseSubject struct {
 type SSOClient struct {
 	ID           string    `db:"id"`
 	Name         string    `db:"name"`
-	LogoURL      string    `db:"logo_url"`
+	LogoURL      *string   `db:"logo_url"`
 	RedirectURIs []string  `db:"redirect_uris"`
 	ClientSecret string    `db:"client_secret"`
 	ZKRequired   bool      `db:"zk_required"`

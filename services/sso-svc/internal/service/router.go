@@ -5,6 +5,7 @@ import (
 	"github.com/jomhoor/sso-svc/internal/jwt"
 	"github.com/jomhoor/sso-svc/internal/service/handlers"
 	"github.com/jomhoor/sso-svc/internal/service/middleware"
+	"github.com/jomhoor/sso-svc/internal/static"
 	"gitlab.com/distributed_lab/ape"
 )
 
@@ -25,6 +26,9 @@ func (s *service) router() chi.Router {
 			handlers.CtxZKP(s.zkp),
 		),
 	)
+
+	// Embedded static assets (fonts, images, etc.)
+	r.Handle("/static/*", static.Handler("/static/"))
 
 	// Well-known files required for Universal Links (iOS) and App Links (Android).
 	// These MUST be served before any auth routes because iOS/Android fetch them
